@@ -242,6 +242,22 @@ The regex pattern `#^/api/sessions(/[^/]+)?(/markers)?$#` was too permissive. It
 
 ---
 
+### Enhancement 1: Auto-Seek Video on Marker Selection
+**Feature**: Video automatically seeks to marker timestamp when selected from list or timeline.
+
+**Implementation**:
+1. Added `ref` to VideoPlayer in Session.vue
+2. Exposed `seekToTime` method from VideoPlayer using `defineExpose`
+3. Modified `handleSelectMarker` to call `seekToTime` when marker is selected
+
+**Files Modified**:
+- `frontend/src/views/Session.vue` (added ref and seek call)
+- `frontend/src/components/VideoPlayer.vue` (exposed seekToTime method)
+
+**Commit**: `325649c`
+
+---
+
 ## How to Run the Project
 
 ### Development Mode
@@ -546,6 +562,7 @@ frontend/dist/
 8. ✅ Git repository initialized with comprehensive commit
 9. ✅ Fixed marker creation routing (Issue #2)
 10. ✅ Tested marker creation successfully
+11. ✅ Added auto-seek video when marker selected (Enhancement #1)
 
 **Ready for**: Full application testing and iOS Safari testing
 
