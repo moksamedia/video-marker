@@ -277,6 +277,30 @@ The regex pattern `#^/api/sessions(/[^/]+)?(/markers)?$#` was too permissive. It
 
 ---
 
+### Enhancement 3: Current Time Indicator on Timeline
+**Feature**: Visual black line on timeline showing current video playback position.
+
+**Implementation**:
+1. Added `timeline-current-time` element to MarkerTimeline.vue
+2. Created `getCurrentTimeStyle()` function to calculate position based on currentTime prop
+3. Position clamped between 0-100% to prevent overflow
+4. Styled as 2px black vertical line with z-index above markers
+5. Set `pointer-events: none` so clicks pass through to timeline
+
+**Files Modified**:
+- `frontend/src/components/MarkerTimeline.vue` (current time indicator element and logic)
+- `frontend/src/styles.css` (timeline-current-time styling and z-index adjustments)
+
+**Visual Details**:
+- 2px wide black vertical line
+- Updates in real-time as video plays (250ms polling)
+- Positioned above markers (z-index: 10) for visibility
+- Doesn't interfere with timeline interaction
+
+**Commit**: `339d943`
+
+---
+
 ## How to Run the Project
 
 ### Development Mode
@@ -583,6 +607,7 @@ frontend/dist/
 10. ✅ Tested marker creation successfully
 11. ✅ Added auto-seek video when marker selected (Enhancement #1)
 12. ✅ Added helper link display for creators (Enhancement #2)
+13. ✅ Added current time indicator to timeline (Enhancement #3)
 
 **Ready for**: Full application testing and iOS Safari testing
 
