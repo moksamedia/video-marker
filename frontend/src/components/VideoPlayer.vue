@@ -192,4 +192,9 @@ const formatTime = (seconds) => {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+// Expose seekTo method for parent component
+defineExpose({
+  seekToTime: seekTo
+})
 </script>

@@ -6,6 +6,7 @@
     <div v-else-if="session" class="session-layout">
       <div class="video-section">
         <VideoPlayer
+          ref="videoPlayerRef"
           :youtubeUrl="session.youtube_url"
           :markers="session.markers"
           :role="session.role"
@@ -51,6 +52,7 @@ const session = ref(null)
 const selectedMarker = ref(null)
 const isLoading = ref(true)
 const error = ref(null)
+const videoPlayerRef = ref(null)
 
 const sessionId = route.params.id
 const token = route.query.token
@@ -95,6 +97,10 @@ const handleCreateMarker = async (startTime, endTime) => {
 
 const handleSelectMarker = (marker) => {
   selectedMarker.value = marker
+  // Seek video to marker start time
+  if (videoPlayerRef.value && marker) {
+    videoPlayerRef.value.seekToTime(marker.start_time)
+  }
 }
 
 const handleDeleteMarker = async (markerId) => {
