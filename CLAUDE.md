@@ -220,6 +220,26 @@ A web application for collaborative language learning through video annotation. 
 - Modified `/api/index.php` (line 3)
 - Updated `README.md` with correct dev server command
 
+**Commit**: `9b79351`
+
+---
+
+### Issue 2: Marker Creation Failing with "youtube_url is required"
+**Problem**: Creating point or range markers failed with error "youtube_url is required" (wrong endpoint error).
+
+**Root Cause**:
+The regex pattern `#^/api/sessions(/[^/]+)?(/markers)?$#` was too permissive. It matched `/api/sessions/{id}/markers` and routed these requests to `SessionsEndpoint` instead of `MarkersEndpoint`.
+
+**Solution**:
+1. Reordered routing to check `/api/sessions/{id}/markers` first
+2. Simplified sessions pattern to `#^/api/sessions(/[^/]+)?$#` (removed optional `/markers` suffix)
+3. Removed duplicate routing code
+
+**Files Modified**:
+- Modified `/api/index.php` (routing order and patterns)
+
+**Commit**: `211af46`
+
 ---
 
 ## How to Run the Project
@@ -521,14 +541,20 @@ frontend/dist/
 3. ✅ Audio recording with lamejs integration
 4. ✅ YouTube IFrame API integration
 5. ✅ Responsive CSS design
-6. ✅ Fixed routing issues for development
+6. ✅ Fixed routing issues for development (Issue #1)
 7. ✅ Tested session creation with Tibetan video URL
+8. ✅ Git repository initialized with comprehensive commit
+9. ✅ Fixed marker creation routing (Issue #2)
+10. ✅ Tested marker creation successfully
 
-**Ready for**: Local testing and iOS Safari testing
+**Ready for**: Full application testing and iOS Safari testing
+
+**Current Status**: All core features working, both issues resolved
 
 **Next Steps**:
 1. Install dependencies: `cd frontend && npm install`
 2. Run development servers (see "How to Run" section)
-3. Test complete workflow
+3. Test complete workflow (session → markers → posts → audio)
 4. Test on iOS Safari for audio compatibility
-5. Consider git initialization for version control
+5. Test range markers and overlap prevention
+6. Test post creation with text and audio
