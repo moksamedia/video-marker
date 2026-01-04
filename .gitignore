@@ -1,0 +1,6 @@
+database.sqlite
+audio/*
+!audio/.gitkeep
+node_modules/
+frontend/dist/
+.DS_Store

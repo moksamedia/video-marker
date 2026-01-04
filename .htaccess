@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# API requests go to api/index.php
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/(.*)$ api/index.php [L,QSA]
+
+# Frontend requests go to frontend/dist/index.html (after build)
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/audio/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^.*$ frontend/dist/index.html [L]
