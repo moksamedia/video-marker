@@ -93,7 +93,7 @@ class SessionsEndpoint {
         }
 
         // Get session data
-        $stmt = $this->pdo->prepare('SELECT id, youtube_url, youtube_title, youtube_thumbnail, created_at FROM sessions WHERE id = ?');
+        $stmt = $this->pdo->prepare('SELECT id, youtube_url, youtube_title, youtube_thumbnail, helper_token, created_at FROM sessions WHERE id = ?');
         $stmt->execute([$sessionId]);
         $session = $stmt->fetch();
 
@@ -116,6 +116,11 @@ class SessionsEndpoint {
 
         $session['markers'] = $markers;
         $session['role'] = $role;
+
+        // Only include helper_token if requester is creator
+        if ($role !== 'creator') {
+            unset($session['helper_token']);
+        }
 
         return $session;
     }

@@ -14,6 +14,22 @@
           @select-marker="handleSelectMarker"
           @delete-session="handleDeleteSession"
         />
+
+        <!-- Helper Link for Creators -->
+        <div v-if="session.role === 'creator' && session.helper_token" class="helper-link-section">
+          <h3>Share Helper Link</h3>
+          <p>Share this link with someone who can help you:</p>
+          <div class="url-input-group">
+            <input
+              type="text"
+              readonly
+              :value="helperUrl"
+              @click="copyHelperUrl"
+              class="helper-url-input"
+            />
+            <button @click="copyHelperUrl" class="btn-primary">Copy Link</button>
+          </div>
+        </div>
       </div>
 
       <div class="markers-section">
@@ -37,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import VideoPlayer from '../components/VideoPlayer.vue'
@@ -149,6 +165,24 @@ const handleDeleteSession = async () => {
     router.push('/')
   } catch (err) {
     alert('Failed to delete session: ' + err.message)
+  }
+}
+
+// Computed property for helper URL
+const helperUrl = computed(() => {
+  if (!session.value || !session.value.helper_token) return ''
+  const base = window.location.origin
+  return `${base}/session/${sessionId}?token=${session.value.helper_token}`
+})
+
+// Copy helper URL to clipboard
+const copyHelperUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(helperUrl.value)
+    alert('Helper link copied to clipboard!')
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    alert('Failed to copy link. Please copy manually.')
   }
 }
 </script>
