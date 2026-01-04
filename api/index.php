@@ -23,12 +23,14 @@ $params = $_GET;
 
 try {
     // Route requests
-    if (preg_match('#^/api/sessions(/[^/]+)?(/markers)?$#', $path)) {
-        $endpoint = new SessionsEndpoint();
+    if (preg_match('#^/api/sessions/[^/]+/markers$#', $path)) {
+        // Handle marker creation (must come before sessions route)
+        $endpoint = new MarkersEndpoint();
         $result = $endpoint->handleRequest($method, $path, $params);
         echo json_encode($result);
-    } elseif (preg_match('#^/api/sessions/[^/]+/markers$#', $path)) {
-        $endpoint = new MarkersEndpoint();
+    } elseif (preg_match('#^/api/sessions(/[^/]+)?$#', $path)) {
+        // Handle session create, get, delete
+        $endpoint = new SessionsEndpoint();
         $result = $endpoint->handleRequest($method, $path, $params);
         echo json_encode($result);
     } elseif (preg_match('#^/api/markers/[^/]+(/posts)?$#', $path)) {
