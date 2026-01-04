@@ -258,6 +258,25 @@ The regex pattern `#^/api/sessions(/[^/]+)?(/markers)?$#` was too permissive. It
 
 ---
 
+### Enhancement 2: Helper Link Display for Creators
+**Feature**: Creators can now view and share the helper link directly from the session page.
+
+**Implementation**:
+1. Modified `getSession` API to include `helper_token` in response when role is creator
+2. Added helper link section in Session.vue that displays only for creators
+3. Added computed property to generate full helper URL
+4. Added copy-to-clipboard functionality with user feedback
+5. Styled section with visual distinction (blue border, gray background)
+
+**Files Modified**:
+- `api/endpoints/sessions.php` (include helper_token for creators)
+- `frontend/src/views/Session.vue` (helper link UI and logic)
+- `frontend/src/styles.css` (helper link section styling)
+
+**Commit**: `1948bcd`
+
+---
+
 ## How to Run the Project
 
 ### Development Mode
@@ -563,6 +582,7 @@ frontend/dist/
 9. ✅ Fixed marker creation routing (Issue #2)
 10. ✅ Tested marker creation successfully
 11. ✅ Added auto-seek video when marker selected (Enhancement #1)
+12. ✅ Added helper link display for creators (Enhancement #2)
 
 **Ready for**: Full application testing and iOS Safari testing
 
