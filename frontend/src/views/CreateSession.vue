@@ -62,12 +62,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useApi } from '../composables/useApi'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSessionBackend } from '../composables/useBackendAdapter'
 
 const router = useRouter()
-const api = useApi()
+let sessionBackend = null
+
+// Load backend adapter on mount
+onMounted(async () => {
+  sessionBackend = await useSessionBackend()
+})
 
 const youtubeUrl = ref('')
 const isLoading = ref(false)

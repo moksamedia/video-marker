@@ -4,7 +4,7 @@
 
 A web application for collaborative language learning through video annotation. Learners can watch YouTube videos, mark specific moments they don't understand, attach text or audio questions, and share a link with a native speaker who can respond with clarifications.
 
-**Status**: ✅ Fully implemented with **TWO backend options**
+**Status**: ✅ Fully implemented with **TWO backend options** and **UNIFIED frontend**
 
 **Date Created**: January 4, 2026
 
@@ -12,42 +12,51 @@ A web application for collaborative language learning through video annotation. 
 
 ## Tech Stack
 
-### Backend Option 1: PHP + SQLite (Original)
+### Backend Options
+The application supports two interchangeable backends using a **single unified frontend**:
+
+#### Option 1: PHP + SQLite
 - **Backend**: PHP 8+ with SQLite database
-- **Frontend**: Vue.js 3 (Composition API), Vite
+- **Deployment**: Standard shared hosting (Apache/PHP)
+- **Best For**: Simple deployment, low traffic, full control
+
+#### Option 2: Supabase
+- **Backend**: Supabase (PostgreSQL + Storage + auto-generated REST API)
+- **Deployment**: Static hosting (Vercel, Netlify, etc.)
+- **Best For**: Auto-scaling, managed services, real-time capabilities
+
+### Unified Frontend
+- **Framework**: Vue.js 3 (Composition API), Vite
+- **Backend Switching**: Environment variable (`VITE_BACKEND=php` or `supabase`)
+- **Adapter Pattern**: Unified interface for both backends
 - **Audio**: Howler.js for playback, MediaRecorder API + lamejs for recording
 - **Video**: YouTube IFrame API
 - **Styling**: Vanilla CSS with responsive design
-- **Deployment**: Standard shared hosting (Apache/PHP)
-
-### Backend Option 2: Supabase (New)
-- **Backend**: Supabase (PostgreSQL + Storage + auto-generated REST API)
-- **Frontend**: Vue.js 3 (same components as PHP version)
-- **Audio**: Howler.js for playback, MediaRecorder API + lamejs for recording
-- **Video**: YouTube IFrame API
-- **Styling**: Same CSS as PHP version
-- **Deployment**: Vercel, Netlify, or any static hosting
 
 ---
 
 ## Implementation Status
 
-### PHP Backend (`/frontend`)
+### Unified Frontend (`/frontend`)
+- ✅ Single codebase supporting both backends
+- ✅ Backend adapter pattern with dynamic imports
+- ✅ Environment-based backend switching
+- ✅ All Vue 3 components
+- ✅ Mobile responsive design
+- ✅ All enhancements and fixes applied
+
+### PHP Backend (`/api`)
 - ✅ Complete backend API implementation
 - ✅ SQLite database with auto-initialization
 - ✅ Token-based authentication
 - ✅ Audio file upload and serving
 - ✅ YouTube oEmbed integration
-- ✅ All Vue 3 components
-- ✅ Mobile responsive design
-- ✅ All enhancements and fixes applied
 
-### Supabase Backend (`/frontend-supabase`)
+### Supabase Backend
 - ✅ PostgreSQL schema with RLS policies
 - ✅ Supabase Storage bucket for audio
 - ✅ Database function for session retrieval
 - ✅ Supabase-specific composables
-- ✅ Same Vue components as PHP version
 - ✅ Token extraction and header injection
 - ✅ Audio cleanup on delete
 - ✅ Setup documentation
@@ -58,7 +67,7 @@ A web application for collaborative language learning through video annotation. 
 
 ### Backend Implementations
 
-#### PHP + SQLite Backend (`/api`, `/frontend`)
+#### PHP + SQLite Backend (`/api`)
 - **Database** (`/api/lib/db.php`): SQLite with auto-initialization
 - **Auth** (`/api/lib/auth.php`): Token validation
 - **API Endpoints**:
@@ -68,20 +77,14 @@ A web application for collaborative language learning through video annotation. 
   - `audio.php` - Audio file serving
 - **Router** (`/router.php`): Dev server routing
 
-#### Supabase Backend (`/frontend-supabase`)
+#### Supabase Backend
 - **Schema** (`/supabase-schema.sql`): PostgreSQL tables, indexes, RLS policies
 - **Storage**: Public audio bucket with policies
 - **Database Function**: `get_session_with_role()` for efficient data fetching
-- **Composables**:
-  - `useSupabase.js` - Client setup
-  - `useSupabaseSession.js` - Session CRUD
-  - `useSupabaseMarkers.js` - Marker CRUD
-  - `useSupabasePosts.js` - Post CRUD
-  - `useAudioStorage.js` - Storage operations
 
-### Frontend (Shared Components)
+### Unified Frontend (`/frontend`)
 
-Both backends use the same Vue components:
+Single codebase that works with both backends via adapter pattern:
 
 **Core Views**:
 - `CreateSession.vue` - YouTube URL input, session creation
@@ -95,8 +98,18 @@ Both backends use the same Vue components:
 - `AudioRecorder.vue` - Recording with lamejs
 - `AudioPlayer.vue` - Howler.js playback
 
-**Composables** (Shared):
-- `useAudioRecorder.js` - MediaRecorder + lamejs encoding
+**Composables** (Backend Adapters):
+- `useBackendAdapter.js` - Unified interface with dynamic imports
+- `useApi.js` - PHP backend implementation
+- `useSupabase.js` - Supabase client setup
+- `useSupabaseSession.js` - Session CRUD for Supabase
+- `useSupabaseMarkers.js` - Marker CRUD for Supabase
+- `useSupabasePosts.js` - Post CRUD for Supabase
+- `useAudioStorage.js` - Supabase Storage operations
+- `useAudioRecorder.js` - Shared audio recording
+
+**Configuration**:
+- `.env` - Backend selection via `VITE_BACKEND` flag
 
 **Styling**:
 - `styles.css` - Responsive design, mobile-first
@@ -228,41 +241,32 @@ Both backends use the same Vue components:
 
 ## File Structure
 
-### PHP Version (`/`)
+### Unified Architecture
 ```
 /video-markup
-├── api/
+├── api/                    # PHP backend
 │   ├── endpoints/          # API handlers
 │   ├── lib/                # Database, auth
 │   └── index.php           # Router
-├── audio/                  # Uploaded files
-├── frontend/
-│   └── src/
-│       ├── components/
-│       ├── composables/
-│       ├── views/
-│       └── styles.css
-├── config.php
+├── audio/                  # PHP uploaded files
+├── frontend/               # UNIFIED frontend
+│   ├── src/
+│   │   ├── components/     # Vue components
+│   │   ├── composables/
+│   │   │   ├── useBackendAdapter.js  # Adapter pattern
+│   │   │   ├── useApi.js             # PHP impl
+│   │   │   ├── useSupabase*.js       # Supabase impl
+│   │   │   └── useAudioRecorder.js   # Shared
+│   │   ├── views/
+│   │   └── styles.css
+│   ├── package.json
+│   ├── vite.config.js
+│   └── .env.example        # Backend selection
+├── config.php              # PHP config
 ├── router.php              # Dev server router
-└── database.sqlite         # Created on first run
-```
-
-### Supabase Version (`/frontend-supabase`)
-```
-/frontend-supabase
-├── src/
-│   ├── components/         # Same as PHP version
-│   ├── composables/
-│   │   ├── useSupabase*.js # Supabase-specific
-│   │   └── useAudioRecorder.js # Shared
-│   ├── views/
-│   └── styles.css          # Same as PHP version
-├── package.json
-├── vite.config.js
-└── .env.example
-
-/supabase-schema.sql        # Database schema
-/SUPABASE_SETUP.md          # Setup guide
+├── database.sqlite         # Created on first run
+├── supabase-schema.sql     # Supabase schema
+└── SUPABASE_SETUP.md       # Supabase setup guide
 ```
 
 ---
@@ -316,26 +320,39 @@ Both backends use the same **"share link" security model**:
 
 ## How to Run
 
-### PHP Version
+### With PHP Backend
 ```bash
-# Terminal 1 - Backend
+# 1. Configure frontend for PHP
+cd frontend
+cp .env.example .env
+# Edit .env: Set VITE_BACKEND=php
+
+# 2. Terminal 1 - Backend
+cd ..
 php -S localhost:8000 router.php
 
-# Terminal 2 - Frontend
+# 3. Terminal 2 - Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-Access: http://localhost:3000
+Access: http://localhost:5173
 
-### Supabase Version
+### With Supabase Backend
 
 1. Set up Supabase (see `SUPABASE_SETUP.md`)
-2. Configure `.env` in `frontend-supabase/`
+2. Configure frontend:
+```bash
+cd frontend
+cp .env.example .env
+# Edit .env:
+#   VITE_BACKEND=supabase
+#   VITE_SUPABASE_URL=https://your-project.supabase.co
+#   VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 3. Run:
 ```bash
-cd frontend-supabase
 npm install
 npm run dev
 ```
@@ -413,6 +430,57 @@ Access: http://localhost:5173
 
 ---
 
+## Unified Frontend Architecture
+
+### Backend Adapter Pattern
+
+The frontend uses an **adapter pattern** to provide a consistent interface regardless of backend:
+
+**How It Works**:
+1. Environment variable `VITE_BACKEND` determines which backend to use
+2. Views import from `useBackendAdapter.js` instead of backend-specific files
+3. Adapter returns appropriate implementation via dynamic imports
+4. Same API surface for both backends
+
+**Example**:
+```javascript
+// In CreateSession.vue
+import { useSessionBackend } from '../composables/useBackendAdapter'
+
+onMounted(async () => {
+  const sessionBackend = await useSessionBackend()
+  // sessionBackend works the same for PHP or Supabase
+})
+```
+
+**Benefits**:
+- ✅ Single codebase to maintain
+- ✅ Easy to switch backends via config
+- ✅ Code splitting via dynamic imports
+- ✅ Type-safe interface (same methods/signatures)
+- ✅ No duplicate Vue components
+
+**Adapter Functions**:
+- `useSessionBackend()` - Session CRUD operations
+- `useMarkersBackend()` - Marker CRUD operations
+- `usePostsBackend()` - Post CRUD operations
+- `useAudioUrl()` - Audio URL generation
+
+### Migration from Separate Frontends
+
+**Previous Architecture**: `/frontend` (PHP) + `/frontend-supabase` (Supabase)
+- ❌ Duplicate Vue components
+- ❌ Must sync changes between directories
+- ❌ Higher maintenance burden
+
+**Current Architecture**: Single `/frontend` with backend switching
+- ✅ All Supabase composables moved to main frontend
+- ✅ Views use adapter pattern
+- ✅ Single source of truth for UI code
+- ✅ `/frontend-supabase` deprecated (can be removed)
+
+---
+
 ## Git Commits
 
 ```
@@ -444,10 +512,13 @@ b4a236b Update CLAUDE.md with Enhancement #2
 8. ✅ **Database schema with RLS**
 9. ✅ **Storage bucket setup**
 10. ✅ **Setup documentation**
+11. ✅ **Unified frontend architecture**
+12. ✅ **Backend adapter pattern**
+13. ✅ **Eliminated duplicate code**
 
-**Current Status**: Both backends fully functional, all enhancements applied
+**Current Status**: Single frontend supporting both backends, all features functional
 
-**Ready For**: Production deployment (choose backend), iOS testing
+**Ready For**: Production deployment (choose backend via env var), iOS testing
 
 ---
 
