@@ -9,13 +9,24 @@ const routes = [
         component: () => import('pages/CreateSessionPage.vue'),
       },
       {
+        path: '/sessions',
+        name: 'sessions',
+        component: () => import('pages/SessionsPage.vue'),
+      },
+      {
         path: '/creator/:id',
         name: 'creator',
         component: () => import('pages/CreatorSessionPage.vue'),
         props: true,
       },
+    ],
+  },
+  {
+    path: '/helper',
+    component: () => import('layouts/HelperLayout.vue'),
+    children: [
       {
-        path: '/helper/:id',
+        path: ':id',
         name: 'helper',
         component: () => import('pages/HelperSessionPage.vue'),
         props: true,

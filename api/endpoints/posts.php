@@ -18,6 +18,14 @@ class PostsEndpoint {
             return $this->createPost($path, $params);
         }
 
+        if ($method === 'PUT') {
+            return $this->updatePost($path, $params);
+        }
+
+        if ($method === 'DELETE') {
+            return $this->deletePost($path, $params);
+        }
+
         http_response_code(405);
         return ['error' => 'Method not allowed'];
     }
@@ -83,5 +91,117 @@ class PostsEndpoint {
 
         http_response_code(201);
         return $post;
+    }
+
+    private function deletePost($path, $params) {
+        // Extract post ID from path: /api/posts/{id}
+        preg_match('/\/api\/posts\/([^\/]+)/', $path, $matches);
+        $postId = $matches[1] ?? null;
+
+        if (!$postId || !isset($params['token'])) {
+            http_response_code(400);
+            return ['error' => 'Post ID and token are required'];
+        }
+
+        // Get post details
+        $stmt = $this->pdo->prepare('
+            SELECT p.*, m.session_id
+            FROM posts p
+            JOIN markers m ON p.marker_id = m.id
+            WHERE p.id = ?
+        ');
+        $stmt->execute([$postId]);
+        $post = $stmt->fetch();
+
+        if (!$post) {
+            http_response_code(404);
+            return ['error' => 'Post not found'];
+        }
+
+        // Validate token
+        $role = $this->auth->validateToken($post['session_id'], $params['token']);
+        if (!$role) {
+            http_response_code(403);
+            return ['error' => 'Invalid token'];
+        }
+
+        // Check if user owns this post
+        if ($post['author_type'] !== $role) {
+            http_response_code(403);
+            return ['error' => 'You can only delete your own posts'];
+        }
+
+        // Delete audio file if exists
+        if ($post['audio_filename']) {
+            $filepath = AUDIO_DIR . '/' . $post['audio_filename'];
+            if (file_exists($filepath)) {
+                unlink($filepath);
+            }
+        }
+
+        // Delete post
+        $stmt = $this->pdo->prepare('DELETE FROM posts WHERE id = ?');
+        $stmt->execute([$postId]);
+
+        return ['success' => true];
+    }
+
+    private function updatePost($path, $params) {
+        // Extract post ID from path: /api/posts/{id}
+        preg_match('/\/api\/posts\/([^\/]+)/', $path, $matches);
+        $postId = $matches[1] ?? null;
+
+        if (!$postId || !isset($params['token'])) {
+            http_response_code(400);
+            return ['error' => 'Post ID and token are required'];
+        }
+
+        // Get post details
+        $stmt = $this->pdo->prepare('
+            SELECT p.*, m.session_id
+            FROM posts p
+            JOIN markers m ON p.marker_id = m.id
+            WHERE p.id = ?
+        ');
+        $stmt->execute([$postId]);
+        $post = $stmt->fetch();
+
+        if (!$post) {
+            http_response_code(404);
+            return ['error' => 'Post not found'];
+        }
+
+        // Validate token
+        $role = $this->auth->validateToken($post['session_id'], $params['token']);
+        if (!$role) {
+            http_response_code(403);
+            return ['error' => 'Invalid token'];
+        }
+
+        // Check if user owns this post
+        if ($post['author_type'] !== $role) {
+            http_response_code(403);
+            return ['error' => 'You can only edit your own posts'];
+        }
+
+        // Get updated text content
+        $data = json_decode(file_get_contents('php://input'), true);
+        $textContent = $data['text_content'] ?? null;
+
+        if ($textContent === null) {
+            http_response_code(400);
+            return ['error' => 'text_content is required'];
+        }
+
+        // Update post
+        $stmt = $this->pdo->prepare('UPDATE posts SET text_content = ? WHERE id = ?');
+        $stmt->execute([$textContent, $postId]);
+
+        // Return updated post
+        $stmt = $this->pdo->prepare('SELECT * FROM posts WHERE id = ?');
+        $stmt->execute([$postId]);
+        $updatedPost = $stmt->fetch();
+
+        return $updatedPost;
     }
 }

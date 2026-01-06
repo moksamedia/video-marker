@@ -21,82 +21,79 @@
     </div>
 
     <!-- Session Content -->
-    <div v-else-if="session" class="session-container">
+    <div v-else-if="sessionStore.session" class="session-container">
       <!-- Video Info Header -->
       <q-card class="q-mb-md">
         <q-card-section class="row items-center">
           <q-avatar size="64px" rounded>
-            <img :src="session.youtube_thumbnail" alt="Video thumbnail" />
+            <img :src="sessionStore.session.youtube_thumbnail" alt="Video thumbnail" />
           </q-avatar>
           <div class="q-ml-md col">
-            <div class="text-h6">{{ session.youtube_title }}</div>
+            <div class="text-h6">{{ sessionStore.session.youtube_title }}</div>
           </div>
         </q-card-section>
       </q-card>
 
-      <!-- Main Content Grid -->
-      <div class="row q-col-gutter-md">
-        <!-- Left Column: Video & Timeline -->
-        <div class="col-12 col-md-6">
-          <VideoPlayer
-            ref="videoPlayerRef"
-            :video-id="getYouTubeId(session.youtube_url)"
-            :is-creator="false"
-            :compact="true"
-            @current-time-update="currentTime = $event"
-            @duration-update="videoDuration = $event"
-            class="q-mb-md"
-          />
+      <!-- Single Column Layout -->
+      <div class="vertical-layout">
+        <!-- Video Player - Full Width -->
+        <HelperVideoPlayer
+          ref="videoPlayerRef"
+          :video-id="getYouTubeId(sessionStore.session.youtube_url)"
+          @current-time-update="sessionStore.setCurrentTime($event)"
+          @duration-update="sessionStore.setVideoDuration($event)"
+          class="q-mb-md"
+        />
 
-          <MarkerTimeline
-            :markers="session.markers"
-            :current-time="currentTime"
-            :duration="videoDuration"
-            @marker-click="selectMarker"
-            @seek="seekTo"
-            class="q-mb-md"
-          />
+        <!-- Timeline - Full Width -->
+        <MarkerTimeline
+          :markers="sessionStore.markers"
+          :current-time="sessionStore.currentTime"
+          :duration="sessionStore.videoDuration"
+          @marker-click="selectMarker"
+          @seek="seekTo"
+          class="q-mb-md"
+        />
 
-          <MarkerList
-            :markers="session.markers"
-            :selected-marker-id="selectedMarker?.id"
-            :is-creator="false"
-            @marker-click="selectMarker"
-          />
-        </div>
-
-        <!-- Right Column: Thread Panel -->
-        <div class="col-12 col-md-6">
-          <ThreadPanel :marker="selectedMarker" role="helper" @post-created="refreshSession" />
-        </div>
+        <!-- Thread Panel - Full Width -->
+        <ThreadPanel :marker="sessionStore.selectedMarker" role="helper" @post-created="refreshSession" />
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { apiService } from 'src/services/api'
-import VideoPlayer from 'src/components/VideoPlayer.vue'
+import { useSessionStore } from 'src/stores/session-store'
+import HelperVideoPlayer from 'src/components/HelperVideoPlayer.vue'
 import MarkerTimeline from 'src/components/MarkerTimeline.vue'
-import MarkerList from 'src/components/MarkerList.vue'
 import ThreadPanel from 'src/components/ThreadPanel.vue'
 
 const route = useRoute()
 const $q = useQuasar()
+const sessionStore = useSessionStore()
 
 const loading = ref(true)
 const error = ref(null)
-const session = ref(null)
-const currentTime = ref(0)
-const videoDuration = ref(0)
-const selectedMarker = ref(null)
 const videoPlayerRef = ref(null)
+
+// Watch for marker selection from drawer
+watch(() => sessionStore.selectedMarker, (newMarker) => {
+  if (newMarker && videoPlayerRef.value) {
+    videoPlayerRef.value.seekToTime(newMarker.start_time)
+  }
+})
 
 onMounted(() => {
   loadSession()
+})
+
+onUnmounted(() => {
+  // Clear session when leaving
+  sessionStore.clearSession()
 })
 
 async function loadSession() {
@@ -110,12 +107,14 @@ async function loadSession() {
       return
     }
 
-    session.value = await apiService.getSession(route.params.id, token)
+    const sessionData = await apiService.getSession(route.params.id, token)
 
-    if (session.value.role !== 'helper') {
+    if (sessionData.role !== 'helper') {
       error.value = 'This URL is for helpers only'
       return
     }
+
+    sessionStore.setSession(sessionData)
   } catch (err) {
     error.value = err.response?.data?.error || err.message || 'Failed to load session'
   } finally {
@@ -126,17 +125,8 @@ async function loadSession() {
 async function refreshSession() {
   try {
     const token = route.query.token
-    session.value = await apiService.getSession(route.params.id, token)
-
-    // Re-select marker if it still exists
-    if (selectedMarker.value) {
-      const marker = session.value.markers.find((m) => m.id === selectedMarker.value.id)
-      if (marker) {
-        selectedMarker.value = marker
-      } else {
-        selectedMarker.value = null
-      }
-    }
+    const sessionData = await apiService.getSession(route.params.id, token)
+    sessionStore.updateSession(sessionData)
   } catch {
     $q.notify({
       type: 'negative',
@@ -147,10 +137,7 @@ async function refreshSession() {
 }
 
 function selectMarker(marker) {
-  selectedMarker.value = marker
-  if (videoPlayerRef.value) {
-    videoPlayerRef.value.seekToTime(marker.start_time)
-  }
+  sessionStore.setSelectedMarker(marker)
 }
 
 function seekTo(time) {
@@ -167,9 +154,16 @@ function getYouTubeId(url) {
 
 <style scoped>
 .session-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
+
+.vertical-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .text-h6 {
   font-size: 1rem;
 }

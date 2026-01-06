@@ -18,13 +18,7 @@
             <div class="text-weight-medium">Recording...</div>
             <div class="text-caption">{{ formatDuration(recordingDuration) }} / 5:00</div>
           </div>
-          <q-btn
-            flat
-            round
-            color="negative"
-            icon="stop"
-            @click="stopRecording"
-          >
+          <q-btn flat round color="negative" icon="stop" @click="stopRecording">
             <q-tooltip>Stop recording</q-tooltip>
           </q-btn>
         </q-card-section>
@@ -43,13 +37,7 @@
           <audio ref="previewAudio" controls class="full-width q-mb-sm"></audio>
 
           <div class="row q-gutter-sm">
-            <q-btn
-              flat
-              color="negative"
-              icon="delete"
-              label="Discard"
-              @click="discardRecording"
-            />
+            <q-btn flat color="negative" icon="delete" label="Discard" @click="discardRecording" />
             <q-space />
             <q-btn
               color="positive"
@@ -76,7 +64,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
-import lamejs from 'lamejs'
+import lamejs from '@breezystack/lamejs'
 
 defineEmits(['audioReady'])
 
@@ -181,12 +169,26 @@ async function encodeToMP3(webmBlob) {
 
     const channels = audioBuffer.numberOfChannels
     const sampleRate = audioBuffer.sampleRate
-    const samples = audioBuffer.getChannelData(0)
 
-    // Convert to 16-bit PCM
-    const buffer = new Int16Array(samples.length)
-    for (let i = 0; i < samples.length; i++) {
-      buffer[i] = samples[i] * 0x7fff
+    // Get samples for left channel
+    const samplesLeft = audioBuffer.getChannelData(0)
+
+    // Convert to 16-bit PCM for left channel
+    const bufferLeft = new Int16Array(samplesLeft.length)
+    for (let i = 0; i < samplesLeft.length; i++) {
+      const s = Math.max(-1, Math.min(1, samplesLeft[i]))
+      bufferLeft[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+    }
+
+    // If stereo, get right channel too
+    let bufferRight = null
+    if (channels === 2) {
+      const samplesRight = audioBuffer.getChannelData(1)
+      bufferRight = new Int16Array(samplesRight.length)
+      for (let i = 0; i < samplesRight.length; i++) {
+        const s = Math.max(-1, Math.min(1, samplesRight[i]))
+        bufferRight[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+      }
     }
 
     // Encode to MP3
@@ -194,9 +196,17 @@ async function encodeToMP3(webmBlob) {
     const mp3Data = []
 
     const sampleBlockSize = 1152
-    for (let i = 0; i < buffer.length; i += sampleBlockSize) {
-      const sampleChunk = buffer.subarray(i, i + sampleBlockSize)
-      const mp3buf = mp3encoder.encodeBuffer(sampleChunk)
+    for (let i = 0; i < bufferLeft.length; i += sampleBlockSize) {
+      const leftChunk = bufferLeft.subarray(i, i + sampleBlockSize)
+      let mp3buf
+
+      if (channels === 2 && bufferRight) {
+        const rightChunk = bufferRight.subarray(i, i + sampleBlockSize)
+        mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk)
+      } else {
+        mp3buf = mp3encoder.encodeBuffer(leftChunk)
+      }
+
       if (mp3buf.length > 0) {
         mp3Data.push(mp3buf)
       }
@@ -213,10 +223,11 @@ async function encodeToMP3(webmBlob) {
     if (previewAudio.value) {
       previewAudio.value.src = URL.createObjectURL(audioBlob.value)
     }
-  } catch {
+  } catch (err) {
+    console.error('Audio encoding error:', err)
     $q.notify({
       type: 'negative',
-      message: 'Failed to encode audio',
+      message: 'Failed to encode audio: ' + err.message,
       icon: 'error',
     })
   }

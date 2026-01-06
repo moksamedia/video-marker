@@ -9,6 +9,15 @@ export const apiService = {
   // ==================== Sessions ====================
 
   /**
+   * List all sessions
+   * @returns {Promise} Array of all sessions
+   */
+  async listSessions() {
+    const response = await api.get('/sessions')
+    return response.data
+  },
+
+  /**
    * Create a new session with a YouTube URL
    * @param {string} youtubeUrl - The YouTube video URL
    * @returns {Promise} Session data with creator_token and helper_token
@@ -107,6 +116,34 @@ export const apiService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    })
+    return response.data
+  },
+
+  /**
+   * Update a post
+   * @param {number} postId - The post ID
+   * @param {string} token - Creator or helper token
+   * @param {string} textContent - Updated text content
+   * @returns {Promise}
+   */
+  async updatePost(postId, token, textContent) {
+    const response = await api.put(`/posts/${postId}`,
+      { text_content: textContent },
+      { params: { token } }
+    )
+    return response.data
+  },
+
+  /**
+   * Delete a post
+   * @param {number} postId - The post ID
+   * @param {string} token - Creator or helper token
+   * @returns {Promise}
+   */
+  async deletePost(postId, token) {
+    const response = await api.delete(`/posts/${postId}`, {
+      params: { token },
     })
     return response.data
   },

@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../config.php';
 
 header('Access-Control-Allow-Origin: ' . CORS_ORIGIN);
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
@@ -43,6 +43,11 @@ try {
             $result = $endpoint->handleRequest($method, $path, $params);
             echo json_encode($result);
         }
+    } elseif (preg_match('#^/api/posts/[^/]+$#', $path)) {
+        // Handle post deletion
+        $endpoint = new PostsEndpoint();
+        $result = $endpoint->handleRequest($method, $path, $params);
+        echo json_encode($result);
     } elseif (preg_match('#^/api/audio/[^/]+$#', $path)) {
         $endpoint = new AudioEndpoint();
         $endpoint->handleRequest($method, $path);

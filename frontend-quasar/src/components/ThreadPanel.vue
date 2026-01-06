@@ -17,33 +17,84 @@
       <!-- Posts List -->
       <q-scroll-area style="height: 400px">
         <q-list v-if="marker.posts && marker.posts.length > 0" separator>
-          <q-item
-            v-for="post in marker.posts"
-            :key="post.id"
-            :class="post.author_type === 'creator' ? 'bg-blue-1' : 'bg-green-1'"
-          >
-            <q-item-section>
-              <q-item-label overline>
-                <q-chip
-                  :color="post.author_type === 'creator' ? 'primary' : 'secondary'"
-                  text-color="white"
-                  dense
-                  size="sm"
-                >
-                  {{ post.author_type === 'creator' ? 'Creator' : 'Helper' }}
-                </q-chip>
-                {{ formatDate(post.created_at) }}
-              </q-item-label>
+          <div v-for="post in marker.posts" :key="post.id">
+            <q-item :class="post.author_type === 'creator' ? 'bg-blue-1' : 'bg-green-1'">
+              <q-item-section>
+                <!-- Edit mode -->
+                <div v-if="editingPostId === post.id">
+                  <q-input
+                    v-model="editingText"
+                    outlined
+                    dense
+                    type="textarea"
+                    rows="3"
+                    autofocus
+                    class="q-mb-sm"
+                  />
+                  <div class="row q-gutter-xs">
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      color="primary"
+                      icon="check"
+                      label="Save"
+                      @click="saveEdit(post)"
+                    />
+                    <q-btn
+                      flat
+                      dense
+                      size="sm"
+                      color="grey"
+                      icon="close"
+                      label="Cancel"
+                      @click="cancelEdit()"
+                    />
+                  </div>
+                </div>
 
-              <q-item-label v-if="post.text_content" class="q-mt-sm">
-                {{ post.text_content }}
-              </q-item-label>
+                <!-- View mode -->
+                <div v-else>
+                  <q-item-label v-if="post.text_content">
+                    {{ post.text_content }}
+                  </q-item-label>
 
-              <div v-if="post.audio_filename" class="q-mt-sm">
-                <AudioPlayer :audio-url="getAudioUrl(post.audio_filename)" />
-              </div>
-            </q-item-section>
-          </q-item>
+                  <div v-if="post.audio_filename">
+                    <AudioPlayer :audio-url="getAudioUrl(post.audio_filename)" />
+                  </div>
+                </div>
+              </q-item-section>
+
+              <q-item-section side v-if="canDeletePost(post) && editingPostId !== post.id">
+                <div class="row q-gutter-xs">
+                  <q-btn
+                    flat
+                    round
+                    color="primary"
+                    icon="edit"
+                    size="md"
+                    @click="startEdit(post)"
+                    v-if="post.text_content"
+                  >
+                    <q-tooltip>Edit post</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    round
+                    color="negative"
+                    icon="delete"
+                    size="md"
+                    @click="confirmDeletePost(post)"
+                  >
+                    <q-tooltip>Delete post</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-item-section>
+            </q-item>
+            <q-item-label class="post-item-label post-date">
+              {{ formatDate(post.created_at) }}
+            </q-item-label>
+          </div>
         </q-list>
 
         <q-card-section v-else class="text-center text-grey-7">
@@ -69,21 +120,12 @@
         />
 
         <div class="q-mt-md">
-          <AudioRecorder
-            v-if="!audioBlob"
-            @audio-ready="handleAudioReady"
-          />
+          <AudioRecorder v-if="!audioBlob" @audio-ready="handleAudioReady" />
           <div v-else class="row items-center q-gutter-sm">
             <q-icon name="mic" color="positive" size="sm" />
             <span class="text-positive">Audio attached</span>
             <q-space />
-            <q-btn
-              flat
-              dense
-              color="negative"
-              icon="close"
-              @click="audioBlob = null"
-            >
+            <q-btn flat dense color="negative" icon="close" @click="audioBlob = null">
               <q-tooltip>Remove audio</q-tooltip>
             </q-btn>
           </div>
@@ -115,6 +157,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import AudioRecorder from './AudioRecorder.vue'
 import AudioPlayer from './AudioPlayer.vue'
@@ -133,11 +176,14 @@ const props = defineProps({
 
 const emit = defineEmits(['postCreated'])
 
+const route = useRoute()
 const $q = useQuasar()
 
 const textContent = ref('')
 const audioBlob = ref(null)
 const isSaving = ref(false)
+const editingPostId = ref(null)
+const editingText = ref('')
 
 const canSave = computed(() => {
   return textContent.value.trim() || audioBlob.value
@@ -153,12 +199,15 @@ async function savePost() {
   isSaving.value = true
 
   try {
-    const token = new URLSearchParams(window.location.search).get('token')
+    const token = route.query.token
+    if (!token) {
+      throw new Error('Token not found')
+    }
     await apiService.createPost(
       props.marker.id,
       token,
       textContent.value.trim() || null,
-      audioBlob.value
+      audioBlob.value,
     )
 
     $q.notify({
@@ -198,10 +247,107 @@ function formatDate(dateString) {
 function getAudioUrl(filename) {
   return apiService.getAudioUrl(filename)
 }
+
+function canDeletePost(post) {
+  // User can delete their own posts (author_type matches role)
+  return post.author_type === props.role
+}
+
+function confirmDeletePost(post) {
+  $q.dialog({
+    title: 'Delete Post',
+    message: 'Are you sure you want to delete this post? This action cannot be undone.',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    await handleDeletePost(post.id)
+  })
+}
+
+async function handleDeletePost(postId) {
+  try {
+    const token = route.query.token
+    if (!token) {
+      throw new Error('Token not found')
+    }
+
+    await apiService.deletePost(postId, token)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Post deleted successfully',
+      icon: 'delete',
+    })
+
+    // Notify parent to refresh
+    emit('postCreated')
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.response?.data?.error || 'Failed to delete post',
+      icon: 'error',
+    })
+  }
+}
+
+function startEdit(post) {
+  editingPostId.value = post.id
+  editingText.value = post.text_content || ''
+}
+
+function cancelEdit() {
+  editingPostId.value = null
+  editingText.value = ''
+}
+
+async function saveEdit(post) {
+  if (!editingText.value.trim()) {
+    $q.notify({
+      type: 'warning',
+      message: 'Post text cannot be empty',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    const token = route.query.token
+    if (!token) {
+      throw new Error('Token not found')
+    }
+
+    await apiService.updatePost(post.id, token, editingText.value.trim())
+
+    $q.notify({
+      type: 'positive',
+      message: 'Post updated successfully',
+      icon: 'check_circle',
+    })
+
+    editingPostId.value = null
+    editingText.value = ''
+
+    // Notify parent to refresh
+    emit('postCreated')
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.response?.data?.error || 'Failed to update post',
+      icon: 'error',
+    })
+  }
+}
 </script>
 
 <style scoped>
 .thread-panel {
   height: 100%;
+}
+.post-item-label {
+  text-align: right;
+}
+.post-date {
+  margin: 5px;
+  color: gray;
 }
 </style>

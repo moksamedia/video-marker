@@ -1,17 +1,10 @@
 <template>
   <div class="marker-timeline">
     <q-card>
-      <q-card-section>
-        <div class="text-subtitle2 q-mb-md">
-          <q-icon name="timeline" /> Timeline
-        </div>
-
+      <div>
         <div class="timeline-container" ref="timelineRef" @click="handleTimelineClick">
           <!-- Current time indicator -->
-          <div
-            class="current-time-indicator"
-            :style="{ left: currentTimePercent + '%' }"
-          ></div>
+          <div class="current-time-indicator" :style="{ left: currentTimePercent + '%' }"></div>
 
           <!-- Point markers -->
           <div
@@ -41,11 +34,13 @@
           </div>
         </div>
 
+        <!--
         <div class="row justify-between q-mt-sm text-caption text-grey-7">
           <div>0:00</div>
           <div>{{ formatTime(duration) }}</div>
         </div>
-      </q-card-section>
+        -->
+      </div>
     </q-card>
   </div>
 </template>

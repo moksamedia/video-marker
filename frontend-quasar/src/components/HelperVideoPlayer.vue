@@ -1,0 +1,102 @@
+<template>
+  <div class="helper-video-player">
+    <div id="helper-youtube-player" ref="playerEl"></div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+const props = defineProps({
+  videoId: {
+    type: String,
+    required: true,
+  },
+})
+
+const emit = defineEmits(['currentTimeUpdate', 'durationUpdate'])
+
+const playerEl = ref(null)
+const player = ref(null)
+const currentTime = ref(0)
+
+let pollInterval = null
+
+onMounted(() => {
+  loadYouTubeAPI()
+})
+
+onBeforeUnmount(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+  }
+  if (player.value) {
+    player.value.destroy()
+  }
+})
+
+function loadYouTubeAPI() {
+  if (window.YT && window.YT.Player) {
+    initPlayer()
+    return
+  }
+
+  const tag = document.createElement('script')
+  tag.src = 'https://www.youtube.com/iframe_api'
+  const firstScriptTag = document.getElementsByTagName('script')[0]
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+
+  window.onYouTubeIframeAPIReady = initPlayer
+}
+
+function initPlayer() {
+  player.value = new window.YT.Player('helper-youtube-player', {
+    videoId: props.videoId,
+    width: '100%',
+    height: '400',
+    playerVars: {
+      modestbranding: 1,
+      rel: 0,
+    },
+    events: {
+      onReady: onPlayerReady,
+    },
+  })
+}
+
+function onPlayerReady() {
+  if (player.value && player.value.getDuration) {
+    const duration = player.value.getDuration()
+    emit('durationUpdate', duration)
+  }
+
+  pollInterval = setInterval(() => {
+    if (player.value && player.value.getCurrentTime) {
+      currentTime.value = player.value.getCurrentTime()
+      emit('currentTimeUpdate', currentTime.value)
+    }
+  }, 250)
+}
+
+function seekToTime(time) {
+  if (player.value && player.value.seekTo) {
+    player.value.seekTo(time, true)
+  }
+}
+
+defineExpose({
+  seekToTime,
+  getCurrentTime: () => currentTime.value,
+})
+</script>
+
+<style scoped>
+.helper-video-player {
+  width: 100%;
+}
+
+#helper-youtube-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+</style>

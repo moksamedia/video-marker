@@ -13,9 +13,7 @@
         />
 
         <q-toolbar-title>
-          <router-link to="/" class="text-white" style="text-decoration: none">
-            Video Markup
-          </router-link>
+          Video Markup - Helper View
         </q-toolbar-title>
 
         <q-btn
@@ -30,19 +28,10 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="isCreatorSession ? 320 : 256">
-      <!-- Show Markers when in Creator Session -->
-      <q-scroll-area v-if="isCreatorSession" class="fit">
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="320">
+      <q-scroll-area class="fit">
         <div class="q-pa-md">
-          <div class="text-h6 q-mb-sm">Markers</div>
-
-          <!-- Navigation Links (Mini) -->
-          <div class="q-mb-md">
-            <q-btn flat dense size="sm" icon="home" label="Home" to="/" class="q-mr-xs" />
-            <q-btn flat dense size="sm" icon="video_library" label="Sessions" to="/sessions" />
-          </div>
-
-          <q-separator class="q-mb-md" />
+          <div class="text-h6 q-mb-md">Markers</div>
 
           <!-- Empty State -->
           <div v-if="markers.length === 0" class="text-center text-grey-6 q-pa-md">
@@ -57,7 +46,7 @@
               :key="marker.id"
               clickable
               :active="selectedMarker?.id === marker.id"
-              active-class="bg-primary text-white"
+              active-class="bg-secondary text-white"
               @click="selectMarker(marker)"
             >
               <q-item-section avatar>
@@ -81,32 +70,6 @@
           </q-list>
         </div>
       </q-scroll-area>
-
-      <!-- Show Navigation when NOT in Creator Session -->
-      <q-list v-else>
-        <q-item-label header>Navigation</q-item-label>
-
-        <q-item clickable to="/" exact>
-          <q-item-section avatar>
-            <q-icon name="add_circle" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Create Session</q-item-label>
-            <q-item-label caption>Start a new annotation session</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-item clickable to="/sessions">
-          <q-item-section avatar>
-            <q-icon name="video_library" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>My Sessions</q-item-label>
-            <q-item-label caption>View all annotation sessions</q-item-label>
-          </q-item-section>
-        </q-item>
-
-      </q-list>
     </q-drawer>
 
     <q-page-container>
@@ -116,20 +79,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSessionStore } from 'src/stores/session-store'
 
-const route = useRoute()
 const sessionStore = useSessionStore()
 const { markers, selectedMarker } = storeToRefs(sessionStore)
 
-const leftDrawerOpen = ref(false)
-
-const isCreatorSession = computed(() => {
-  return route.name === 'creator'
-})
+const leftDrawerOpen = ref(true)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value

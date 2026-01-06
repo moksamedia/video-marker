@@ -18,6 +18,10 @@ class SessionsEndpoint {
             case 'POST':
                 return $this->createSession();
             case 'GET':
+                // Check if this is a list request (no session ID in path)
+                if (preg_match('/^\/api\/sessions\/?$/', $path)) {
+                    return $this->listSessions();
+                }
                 return $this->getSession($path, $params);
             case 'DELETE':
                 return $this->deleteSession($path, $params);
@@ -162,5 +166,28 @@ class SessionsEndpoint {
         }
 
         return ['success' => true];
+    }
+
+    private function listSessions() {
+        // Get all sessions with marker count
+        $stmt = $this->pdo->query('
+            SELECT
+                s.id,
+                s.youtube_url,
+                s.youtube_title,
+                s.youtube_thumbnail,
+                s.creator_token,
+                s.helper_token,
+                s.created_at,
+                COUNT(DISTINCT m.id) as marker_count
+            FROM sessions s
+            LEFT JOIN markers m ON s.id = m.session_id
+            GROUP BY s.id
+            ORDER BY s.created_at DESC
+        ');
+
+        $sessions = $stmt->fetchAll();
+
+        return ['sessions' => $sessions];
     }
 }
