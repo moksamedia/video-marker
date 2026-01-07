@@ -1,32 +1,158 @@
 <template>
   <div class="thread-panel">
-    <q-card v-if="marker">
-      <q-card-section>
-        <!-- Mobile: Prev/Next buttons on separate row (< 450px) -->
-        <div class="row q-gutter-sm q-mb-sm mobile-marker-nav">
-          <q-btn
-            class="col"
-            label="Prev Mark"
-            @click="goToPreviousMarker"
-            :disable="!hasPreviousMarker"
-          />
-          <q-btn class="col" label="Next Mark" @click="goToNextMarker" :disable="!hasNextMarker" />
-        </div>
-
-        <!-- Desktop/Main controls -->
-        <div class="row items-center justify-between desktop-controls">
-          <!-- Previous marker (far left) - hidden on mobile -->
-          <q-btn
-            round
-            icon="chevron_left"
-            @click="goToPreviousMarker"
-            :disable="!hasPreviousMarker"
-            class="desktop-nav-btn"
-          >
-            <q-tooltip>Previous marker</q-tooltip>
+    <!-- Helper View - Flat div structure -->
+    <div v-if="marker && role === 'helper'" class="thread-content-helper">
+      <!-- Controls -->
+      <div class="controls-section">
+        <div class="row items-center q-gutter-xs helper-btns" style="width: 100%">
+          <!-- Seek backward 5s -->
+          <q-btn @click="seekBackward(5)" label="<< 5s" no-caps block>
+            <q-tooltip>Seek backward 5s</q-tooltip>
+          </q-btn>
+          <!-- Marker time (clickable to play from marker) -->
+          <q-label class="text-subtitle2"> </q-label>
+          <q-btn @click="playFromMarker">
+            <q-icon :name="marker.end_time ? 'schedule' : 'place'" class="q-mr-xs" />
+            {{ formatTime(marker.start_time) }}
+            <span v-if="marker.end_time"> - {{ formatTime(marker.end_time) }}</span>
+            <span class="text-grey-7" style="margin-left: 5px">
+              {{ currentMarkerIndex + 1 }}/{{ markers.length }}
+            </span>
+            <q-tooltip>Play from marker start</q-tooltip>
           </q-btn>
 
-          <!-- Middle controls group -->
+          <!-- Play/Pause button -->
+          <q-btn @click="togglePlayPause">
+            <q-icon name="play_arrow" size="xs" />
+            <span class="q-mx-xs">/</span>
+            <q-icon name="pause" size="xs" />
+            <q-tooltip>Play / Pause</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
+
+      <!-- Posts List -->
+      <div v-if="marker.posts && marker.posts.length > 0" class="posts-section">
+        <div v-for="post in marker.posts" :key="post.id" class="post-item">
+          <div
+            class="post-content"
+            :class="{
+              'helper-post': post.author_type === 'helper',
+              'creator-post-in-helper': post.author_type === 'creator',
+            }"
+          >
+            <div class="post-body">
+              <!-- Edit mode -->
+              <div v-if="editingPostId === post.id">
+                <q-input
+                  v-model="editingText"
+                  outlined
+                  dense
+                  type="textarea"
+                  rows="3"
+                  autofocus
+                  class="q-mb-sm post-text-input"
+                />
+                <div class="row q-gutter-xs">
+                  <q-btn
+                    flat
+                    dense
+                    size="sm"
+                    color="primary"
+                    icon="check"
+                    label="Save"
+                    @click="saveEdit(post)"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    size="sm"
+                    color="grey"
+                    icon="close"
+                    label="Cancel"
+                    @click="cancelEdit()"
+                  />
+                </div>
+              </div>
+
+              <!-- View mode -->
+              <div v-else>
+                <div v-if="post.text_content" class="post-text-content">
+                  {{ post.text_content }}
+                </div>
+
+                <div v-if="post.audio_filename">
+                  <AudioPlayer :audio-url="getAudioUrl(post.audio_filename)" />
+                </div>
+              </div>
+            </div>
+
+            <div v-if="canDeletePost(post) && editingPostId !== post.id" class="post-actions">
+              <q-btn
+                flat
+                round
+                color="primary"
+                icon="edit"
+                size="md"
+                @click="startEdit(post)"
+                v-if="post.text_content"
+              >
+                <q-tooltip>Edit post</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                color="negative"
+                icon="delete"
+                size="md"
+                @click="confirmDeletePost(post)"
+              >
+                <q-tooltip>Delete post</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+          <div class="post-date">{{ formatDate(post.created_at) }}</div>
+        </div>
+      </div>
+
+      <!-- Reply Area -->
+      <div class="reply-section">
+        <!-- Recording Interface -->
+        <div v-if="replyMode === 'record'">
+          <AudioRecorder auto-start @audio-ready="handleAudioRecorded" @cancel="cancelReply" />
+        </div>
+
+        <!-- WhatsApp-style Input -->
+        <div v-else class="whatsapp-input">
+          <q-input
+            v-model="textContent"
+            outlined
+            autogrow
+            placeholder="Type a message"
+            :disable="isSaving"
+            class="message-input"
+            @keyup.enter="handleEnter"
+          />
+          <q-btn
+            round
+            :icon="textContent.trim() ? 'send' : 'mic'"
+            :color="textContent.trim() ? 'primary' : 'grey-7'"
+            @click="handleActionButton"
+            :disable="isSaving"
+            :loading="isSaving"
+            class="action-btn"
+          >
+            <q-tooltip>{{ textContent.trim() ? 'Send' : 'Record audio' }}</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
+    </div>
+
+    <!-- Creator View - Card structure -->
+    <q-card v-else-if="marker && role === 'creator'">
+      <q-card-section>
+        <!-- Controls -->
+        <div class="row items-center justify-center q-gutter-xs">
           <div class="row items-center q-gutter-xs">
             <!-- Seek backward 30s (desktop only) -->
             <q-btn @click="seekBackward(30)" label="<< 30s" no-caps class="gt-xs">
@@ -57,17 +183,6 @@
               <q-tooltip>Seek forward 30s</q-tooltip>
             </q-btn>
           </div>
-
-          <!-- Next marker (far right) - hidden on mobile -->
-          <q-btn
-            round
-            icon="chevron_right"
-            @click="goToNextMarker"
-            :disable="!hasNextMarker"
-            class="desktop-nav-btn"
-          >
-            <q-tooltip>Next marker</q-tooltip>
-          </q-btn>
         </div>
       </q-card-section>
 
@@ -79,7 +194,6 @@
           <q-item
             :class="{
               'helper-post': post.author_type === 'helper',
-              'creator-post-in-helper': role === 'helper' && post.author_type === 'creator',
             }"
           >
             <q-item-section>
@@ -162,43 +276,38 @@
 
       <!-- Reply Area -->
       <q-card-section>
-        <!-- Reply Buttons -->
-        <div v-if="!replyMode" class="row justify-center q-gutter-sm">
-          <q-btn outline color="primary" icon="edit" label="Text" @click="replyMode = 'text'" />
-          <q-btn outline color="primary" icon="mic" label="Audio" @click="replyMode = 'record'" />
+        <!-- Recording Interface -->
+        <div v-if="replyMode === 'record'">
+          <AudioRecorder auto-start @audio-ready="handleAudioRecorded" @cancel="cancelReply" />
         </div>
 
-        <!-- Text Reply Form -->
-        <div v-if="replyMode === 'text'">
+        <!-- WhatsApp-style Input -->
+        <div v-else class="whatsapp-input">
           <q-input
             v-model="textContent"
             outlined
-            type="textarea"
-            label="Type your message"
-            rows="3"
+            dense
+            placeholder="Type a message"
             :disable="isSaving"
-            class="q-mb-sm post-text-input"
+            class="message-input"
+            @keyup.enter="handleEnter"
           />
-          <div class="row q-gutter-sm">
-            <q-btn
-              color="primary"
-              icon="send"
-              label="Submit"
-              @click="savePost"
-              :disable="!textContent.trim() || isSaving"
-              :loading="isSaving"
-            />
-            <q-btn flat color="grey" label="Cancel" @click="cancelReply" :disable="isSaving" />
-          </div>
-        </div>
-
-        <!-- Record Reply Form -->
-        <div v-if="replyMode === 'record'">
-          <AudioRecorder auto-start @audio-ready="handleAudioRecorded" @cancel="cancelReply" />
+          <q-btn
+            round
+            :icon="textContent.trim() ? 'send' : 'mic'"
+            :color="textContent.trim() ? 'primary' : 'grey-7'"
+            @click="handleActionButton"
+            :disable="isSaving"
+            :loading="isSaving"
+            class="action-btn"
+          >
+            <q-tooltip>{{ textContent.trim() ? 'Send' : 'Record audio' }}</q-tooltip>
+          </q-btn>
         </div>
       </q-card-section>
     </q-card>
 
+    <!-- No marker selected -->
     <q-card v-else class="text-center">
       <q-card-section>
         <q-icon name="touch_app" size="64px" color="grey-5" />
@@ -234,7 +343,13 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['postCreated', 'markerSelected', 'seek', 'playFromMarker'])
+const emit = defineEmits([
+  'postCreated',
+  'markerSelected',
+  'seek',
+  'playFromMarker',
+  'togglePlayPause',
+])
 
 const route = useRoute()
 const $q = useQuasar()
@@ -252,28 +367,6 @@ const currentMarkerIndex = computed(() => {
   return props.markers.findIndex((m) => m.id === props.marker.id)
 })
 
-const hasPreviousMarker = computed(() => {
-  return currentMarkerIndex.value > 0
-})
-
-const hasNextMarker = computed(() => {
-  return currentMarkerIndex.value >= 0 && currentMarkerIndex.value < props.markers.length - 1
-})
-
-function goToPreviousMarker() {
-  if (hasPreviousMarker.value) {
-    const previousMarker = props.markers[currentMarkerIndex.value - 1]
-    emit('markerSelected', previousMarker)
-  }
-}
-
-function goToNextMarker() {
-  if (hasNextMarker.value) {
-    const nextMarker = props.markers[currentMarkerIndex.value + 1]
-    emit('markerSelected', nextMarker)
-  }
-}
-
 function seekBackward(seconds) {
   emit('seek', -seconds)
 }
@@ -284,6 +377,10 @@ function seekForward(seconds) {
 
 function playFromMarker() {
   emit('playFromMarker', props.marker.start_time)
+}
+
+function togglePlayPause() {
+  emit('togglePlayPause')
 }
 
 async function handleAudioRecorded(blob) {
@@ -314,7 +411,7 @@ async function savePost() {
       icon: 'check_circle',
     })
 
-    // Reset form and return to button layout
+    // Reset form
     textContent.value = ''
     audioBlob.value = null
     replyMode.value = null
@@ -336,6 +433,24 @@ function cancelReply() {
   replyMode.value = null
   textContent.value = ''
   audioBlob.value = null
+}
+
+function handleActionButton() {
+  if (textContent.value.trim()) {
+    // Send text message
+    savePost()
+  } else {
+    // Start audio recording
+    replyMode.value = 'record'
+  }
+}
+
+function handleEnter(event) {
+  // Only submit on Enter without Shift (Shift+Enter for new line)
+  if (!event.shiftKey && textContent.value.trim()) {
+    event.preventDefault()
+    savePost()
+  }
 }
 
 function formatTime(seconds) {
@@ -472,50 +587,107 @@ async function saveEdit(post) {
 .thread-panel {
   height: 100%;
 }
+
+/* Helper view - flat styling */
+.thread-content-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.controls-section {
+  padding: 16px 0;
+}
+
+.posts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.post-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0px;
+  border-radius: 4px;
+}
+
+.post-content.helper-post {
+  margin-left: 24px;
+}
+
+.post-content.creator-post-in-helper {
+  background-color: #e3f2fd;
+}
+
+.post-body {
+  flex: 1;
+}
+
+.post-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.reply-section {
+  padding: 5px 0;
+  margin-bottom: 20px;
+}
+
+/* Creator view - keep existing q-item styles */
 .post-item-label {
   text-align: right;
 }
+
 .post-date {
-  margin: 5px;
+  margin: 0px 5px;
   color: gray;
+  text-align: right;
 }
+
 .helper-post {
   margin-left: 24px;
-}
-.creator-post-in-helper {
-  background-color: #e3f2fd;
 }
 
 /* Post text styling - larger font */
 .post-text-content {
-  font-size: 1.7rem;
+  font-size: 1.3rem;
   line-height: 1.5;
 }
 
 /* Post text input - larger font */
 .post-text-input :deep(textarea) {
-  font-size: 1.7rem;
+  font-size: 1.3rem;
   line-height: 1.5;
 }
 
-/* Mobile marker navigation - show only on screens < 450px */
-.mobile-marker-nav {
-  display: none;
+.helper-btns .q-btn {
+  flex: 1;
 }
 
-@media (max-width: 449px) {
-  .mobile-marker-nav {
-    display: flex;
-  }
+/* WhatsApp-style input */
+.whatsapp-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  /* Hide the round prev/next buttons on mobile */
-  .desktop-nav-btn {
-    display: none;
-  }
+.whatsapp-input .message-input {
+  flex: 1;
+}
 
-  /* Center the middle controls on mobile */
-  .desktop-controls {
-    justify-content: center;
-  }
+.whatsapp-input .message-input :deep(.q-field__control) {
+  border-radius: 24px;
+}
+
+.whatsapp-input .action-btn {
+  flex-shrink: 0;
 }
 </style>

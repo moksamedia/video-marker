@@ -64,16 +64,38 @@
           class="q-mb-md"
         />
 
-        <!-- Timeline - Full Width -->
-        <MarkerTimeline
-          :markers="sessionStore.markers"
-          :current-time="sessionStore.currentTime"
-          :duration="sessionStore.videoDuration"
-          :selected-marker="sessionStore.selectedMarker"
-          @marker-click="selectMarker"
-          @seek="seekTo"
-          class="q-mb-md"
-        />
+        <!-- Timeline with Navigation - Full Width -->
+        <div class="row items-center q-gutter-sm q-mb-md">
+          <q-btn
+            round
+            icon="chevron_left"
+            @click="goToPreviousMarker"
+            :disable="!hasPreviousMarker"
+            color="primary"
+          >
+            <q-tooltip>Previous marker</q-tooltip>
+          </q-btn>
+
+          <MarkerTimeline
+            :markers="sessionStore.markers"
+            :current-time="sessionStore.currentTime"
+            :duration="sessionStore.videoDuration"
+            :selected-marker="sessionStore.selectedMarker"
+            @marker-click="selectMarker"
+            @seek="seekTo"
+            class="col"
+          />
+
+          <q-btn
+            round
+            icon="chevron_right"
+            @click="goToNextMarker"
+            :disable="!hasNextMarker"
+            color="primary"
+          >
+            <q-tooltip>Next marker</q-tooltip>
+          </q-btn>
+        </div>
 
         <!-- Thread Panel - Full Width -->
         <ThreadPanel
@@ -113,6 +135,20 @@ const helperUrl = computed(() => {
   if (!sessionStore.session) return ''
   const base = window.location.origin
   return `${base}/#/helper/${sessionStore.session.id}?token=${sessionStore.session.helper_token}`
+})
+
+// Marker navigation
+const currentMarkerIndex = computed(() => {
+  if (!sessionStore.selectedMarker || !sessionStore.markers.length) return -1
+  return sessionStore.markers.findIndex((m) => m.id === sessionStore.selectedMarker.id)
+})
+
+const hasPreviousMarker = computed(() => {
+  return currentMarkerIndex.value > 0
+})
+
+const hasNextMarker = computed(() => {
+  return currentMarkerIndex.value >= 0 && currentMarkerIndex.value < sessionStore.markers.length - 1
 })
 
 // Watch for marker selection from drawer
@@ -210,6 +246,20 @@ async function handleDeleteSession() {
 
 function selectMarker(marker) {
   sessionStore.setSelectedMarker(marker)
+}
+
+function goToPreviousMarker() {
+  if (hasPreviousMarker.value) {
+    const previousMarker = sessionStore.markers[currentMarkerIndex.value - 1]
+    sessionStore.setSelectedMarker(previousMarker)
+  }
+}
+
+function goToNextMarker() {
+  if (hasNextMarker.value) {
+    const nextMarker = sessionStore.markers[currentMarkerIndex.value + 1]
+    sessionStore.setSelectedMarker(nextMarker)
+  }
 }
 
 function seekTo(time) {
