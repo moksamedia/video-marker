@@ -783,9 +783,164 @@ player.value = new window.YT.Player('helper-youtube-player', {
 - [ ] Migrate Quasar frontend to support Supabase backend (currently PHP only)
 - [ ] Add session search/filtering
 - [ ] Implement marker descriptions/notes
-- [ ] Add keyboard shortcuts for common actions
+- [x] ~~Add keyboard shortcuts for common actions~~ (Completed - spacebar play/pause)
 - [x] ~~Session list/management~~ (Completed)
 - [x] ~~Edit existing posts~~ (Completed)
+
+---
+
+## Quasar UX Enhancements (January 7, 2026)
+
+**Date**: January 7, 2026
+**Status**: ✅ Complete
+
+### Reply Interface Overhaul
+
+**Problem**: Original reply interface had always-visible text input and audio recorder in a fixed-height panel, making the UI cluttered and less intuitive.
+
+**Solution**: Streamlined two-button interface with contextual forms.
+
+**Implementation**:
+1. **Two-button mode**: "Text" and "Audio" buttons as default state
+2. **Contextual display**: Clicking a button shows only that input method
+3. **Auto-start recording**: "Record Reply" immediately starts recording (no extra click)
+4. **Visual feedback**: Green check mark to complete, red X to cancel recording
+5. **Auto-submit**: Recording automatically submits when stopped
+6. **Reset to buttons**: Interface returns to button mode after submission
+
+**Benefits**:
+- Cleaner interface with less visual clutter
+- Faster workflow (one less click for audio replies)
+- Clearer visual hierarchy
+- Users can quickly switch between text and audio modes
+
+**Files Modified**: ThreadPanel.vue, AudioRecorder.vue
+
+---
+
+### Post Display Enhancements
+
+**Readability Improvements**:
+- **Font size increased** to 1.7rem (from default 1rem)
+- **Line height** set to 1.5 for comfortable reading
+- Applies to both viewing and editing modes
+
+**Visual Differentiation**:
+- **Helper replies indented** 24px to show conversation flow
+- **Creator posts in helper view** have light blue background (#e3f2fd)
+- Clear visual distinction between participants
+
+**Date Formatting**:
+- Changed from absolute dates to **relative time**
+- Format: "just now", "5 minutes ago", "2 days ago", etc.
+- Easier to understand recency at a glance
+
+**Files Modified**: ThreadPanel.vue
+
+---
+
+### Marker Navigation System
+
+**New Controls in Thread Panel Header**:
+1. **Previous/Next Marker Buttons**
+   - Navigate between markers without drawer
+   - Disabled when at first/last marker
+   - Tooltips for clarity
+
+2. **Seek Buttons**
+   - << 5s / 5s >> for precise navigation
+   - << 30s / 30s >> for quick jumps (desktop only)
+   - Arbitrary seek amounts (parameterized functions)
+
+3. **Clickable Marker Time**
+   - Click time display to play from marker start
+   - Icon and timestamp become interactive button
+   - Tooltip: "Play from marker start"
+
+4. **Marker Counter**
+   - Compact format: "1/3" instead of "Marker 1 of 3"
+   - Saves space on mobile
+
+**Layout**:
+- **Desktop (≥450px)**: Round prev/next buttons on edges, seek + time controls centered
+- **Mobile (<450px)**:
+  - Row 1: Full-width "Prev Mark" / "Next Mark" buttons
+  - Row 2: Centered seek + time controls (round buttons hidden)
+
+**Files Modified**: ThreadPanel.vue, CreatorSessionPage.vue, HelperSessionPage.vue
+
+---
+
+### Timeline Visual Feedback
+
+**Selected Marker Indicator**:
+- **White outline** (3px) around currently selected marker
+- **Enhanced appearance**:
+  - Point markers: Brighter red (#ff0000), wider (6px), taller
+  - Range markers: More opaque background, thicker orange border
+- **Higher z-index** to ensure visibility
+- Instantly shows which marker thread is displayed
+
+**Files Modified**: MarkerTimeline.vue, CreatorSessionPage.vue, HelperSessionPage.vue
+
+---
+
+### Keyboard Controls
+
+**Spacebar Play/Pause**:
+- Global keyboard listener for spacebar
+- **Toggles play/pause** regardless of focus
+- **Prevents button triggering**: `event.preventDefault()` blocks focused button clicks
+- **Smart detection**: Works normally when typing in text fields
+  - Checks for INPUT, TEXTAREA, or contentEditable elements
+  - Allows natural typing with spaces in posts
+
+**Implementation**:
+- Added `pause()` and `togglePlayPause()` methods to video players
+- Keyboard listener added on mount, removed on unmount
+- Checks YouTube player state (1=playing, 2=paused)
+
+**Files Modified**: CreatorVideoPlayer.vue, HelperVideoPlayer.vue, CreatorSessionPage.vue, HelperSessionPage.vue
+
+---
+
+### Responsive Design Improvements
+
+**Mobile Optimization (<450px)**:
+1. **Marker Navigation**:
+   - Full-width text buttons replace round icon buttons
+   - Clearer labels: "Prev Mark" / "Next Mark"
+   - Two-row layout for better touch targets
+
+2. **Simplified Controls**:
+   - 30s seek buttons hidden on mobile
+   - Only essential 5s buttons shown
+   - Reduces clutter on small screens
+
+**CSS Implementation**:
+- Media query at 449px breakpoint
+- `.mobile-marker-nav` and `.desktop-nav-btn` classes
+- Flexbox layouts adjust automatically
+
+**Files Modified**: ThreadPanel.vue
+
+---
+
+### Testing Updates
+
+**New Features Tested**:
+- [x] Streamlined reply interface (text and audio modes)
+- [x] Auto-start recording on "Record Reply"
+- [x] Green check completes recording, red X cancels
+- [x] Relative date formatting for all time ranges
+- [x] Helper post indentation and creator post backgrounds
+- [x] Previous/Next marker navigation
+- [x] Seek backward/forward (5s and 30s)
+- [x] Clickable marker time plays from start
+- [x] Selected marker highlighted on timeline
+- [x] Mobile responsive navigation layout
+- [x] Spacebar play/pause (except when typing)
+- [x] Larger font size for posts (1.7rem)
 
 ---
 
