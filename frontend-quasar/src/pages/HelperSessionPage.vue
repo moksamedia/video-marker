@@ -22,18 +22,6 @@
 
     <!-- Session Content -->
     <div v-else-if="sessionStore.session" class="session-container">
-      <!-- Video Info Header -->
-      <q-card class="q-mb-md">
-        <q-card-section class="row items-center">
-          <q-avatar size="64px" rounded>
-            <img :src="sessionStore.session.youtube_thumbnail" alt="Video thumbnail" />
-          </q-avatar>
-          <div class="q-ml-md col">
-            <div class="text-h6">{{ sessionStore.session.youtube_title }}</div>
-          </div>
-        </q-card-section>
-      </q-card>
-
       <!-- Single Column Layout -->
       <div class="vertical-layout">
         <!-- Video Player - Full Width -->
@@ -50,13 +38,22 @@
           :markers="sessionStore.markers"
           :current-time="sessionStore.currentTime"
           :duration="sessionStore.videoDuration"
+          :selected-marker="sessionStore.selectedMarker"
           @marker-click="selectMarker"
           @seek="seekTo"
           class="q-mb-md"
         />
 
         <!-- Thread Panel - Full Width -->
-        <ThreadPanel :marker="sessionStore.selectedMarker" role="helper" @post-created="refreshSession" />
+        <ThreadPanel
+          :marker="sessionStore.selectedMarker"
+          :markers="sessionStore.markers"
+          role="helper"
+          @post-created="refreshSession"
+          @marker-selected="sessionStore.setSelectedMarker"
+          @seek="handleSeek"
+          @play-from-marker="handlePlayFromMarker"
+        />
       </div>
     </div>
   </q-page>
@@ -81,19 +78,28 @@ const error = ref(null)
 const videoPlayerRef = ref(null)
 
 // Watch for marker selection from drawer
-watch(() => sessionStore.selectedMarker, (newMarker) => {
-  if (newMarker && videoPlayerRef.value) {
-    videoPlayerRef.value.seekToTime(newMarker.start_time)
-  }
-})
+watch(
+  () => sessionStore.selectedMarker,
+  (newMarker) => {
+    if (newMarker && videoPlayerRef.value) {
+      videoPlayerRef.value.seekToTime(newMarker.start_time)
+    }
+  },
+)
 
 onMounted(() => {
   loadSession()
+
+  // Add spacebar listener for play/pause
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // Clear session when leaving
   sessionStore.clearSession()
+
+  // Remove spacebar listener
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 async function loadSession() {
@@ -146,9 +152,45 @@ function seekTo(time) {
   }
 }
 
+function handleSeek(deltaSeconds) {
+  if (videoPlayerRef.value) {
+    const currentTime = sessionStore.currentTime
+    const newTime = Math.max(0, currentTime + deltaSeconds)
+    videoPlayerRef.value.seekToTime(newTime)
+  }
+}
+
+function handlePlayFromMarker(startTime) {
+  if (videoPlayerRef.value) {
+    videoPlayerRef.value.seekToTime(startTime)
+    videoPlayerRef.value.play()
+  }
+}
+
 function getYouTubeId(url) {
   const match = url.match(/[?&]v=([^&]+)/)
   return match ? match[1] : ''
+}
+
+function handleKeyDown(event) {
+  // Spacebar for play/pause
+  if (event.code === 'Space' || event.key === ' ') {
+    // Don't override spacebar if user is typing in an input or textarea
+    const target = event.target
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return
+    }
+
+    // Prevent default scrolling behavior and button triggers
+    event.preventDefault()
+    if (videoPlayerRef.value) {
+      videoPlayerRef.value.togglePlayPause()
+    }
+  }
 }
 </script>
 

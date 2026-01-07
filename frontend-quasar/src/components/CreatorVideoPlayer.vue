@@ -196,8 +196,35 @@ function seekToTime(time) {
   }
 }
 
+function play() {
+  if (player.value && player.value.playVideo) {
+    player.value.playVideo()
+  }
+}
+
+function pause() {
+  if (player.value && player.value.pauseVideo) {
+    player.value.pauseVideo()
+  }
+}
+
+function togglePlayPause() {
+  if (player.value) {
+    const state = player.value.getPlayerState()
+    // 1 = playing, 2 = paused
+    if (state === 1) {
+      pause()
+    } else {
+      play()
+    }
+  }
+}
+
 defineExpose({
   seekToTime,
+  play,
+  pause,
+  togglePlayPause,
   getCurrentTime: () => currentTime.value,
 })
 </script>

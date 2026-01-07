@@ -8,6 +8,8 @@ A web application for collaborative language learning through video annotation. 
 
 **Date Created**: January 4, 2026
 
+**Last Updated**: January 6, 2026
+
 ---
 
 ## Tech Stack
@@ -481,9 +483,320 @@ onMounted(async () => {
 
 ---
 
+## Quasar Frontend Refactor
+
+**Date**: January 6, 2026
+**Status**: ✅ Complete and functional
+
+### Overview
+
+The frontend has been refactored from vanilla Vue 3 + Vite to **Quasar Framework** for improved UI components and mobile responsiveness. The Quasar version is located in `/frontend-quasar` and currently uses the PHP backend.
+
+### New Architecture
+
+**Framework**: Quasar v2.18.6 with Vue 3 Composition API
+**State Management**: Pinia for shared session state
+**Router**: Vue Router with hash-based routing
+**Layout System**: Quasar's layout components with drawer navigation
+
+### Key Improvements
+
+1. **Professional UI Components**
+   - Replaced custom CSS with Quasar's material design components
+   - Better mobile responsiveness out of the box
+   - Consistent design system
+
+2. **Layout Refactoring**
+   - **Vertical full-width layout**: Video, timeline, and thread panel stacked
+   - **Drawer-based navigation**: Markers moved to left drawer (320px width)
+   - **Separate layouts**: MainLayout for home/sessions/creator, HelperLayout for helper view
+   - **Conditional drawer content**: Navigation links (home/sessions) OR markers (in session views)
+
+3. **Session Management Page**
+   - Grid view with large thumbnails and cards
+   - Compact list view for browsing many sessions
+   - Toggle between views (persisted in localStorage)
+   - Copy creator/helper links with one click
+   - Delete sessions with confirmation dialog
+   - Shows marker count and creation date
+
+4. **Post Management**
+   - **Edit posts**: Inline editing with save/cancel buttons (text-only posts)
+   - **Delete posts**: Trash icon with confirmation dialog
+   - Users can only edit/delete their own posts
+   - Date displayed below each post
+
+5. **Pinia State Store**
+   - Centralized session state shared across components
+   - Reactive markers list, selected marker, current time, video duration
+   - Eliminates prop drilling and duplicate state
+
+### File Structure
+
+```
+/frontend-quasar
+├── src/
+│   ├── components/
+│   │   ├── AudioPlayer.vue         # Howler.js audio playback
+│   │   ├── AudioRecorder.vue       # MediaRecorder + lamejs encoding
+│   │   ├── CreatorVideoPlayer.vue  # YouTube player for creator view
+│   │   ├── HelperVideoPlayer.vue   # YouTube player for helper view
+│   │   ├── MarkerList.vue          # List of markers (used in drawer)
+│   │   ├── MarkerTimeline.vue      # Visual timeline with markers
+│   │   └── ThreadPanel.vue         # Posts display and CRUD
+│   ├── layouts/
+│   │   ├── MainLayout.vue          # Home, sessions, creator layout
+│   │   └── HelperLayout.vue        # Helper-specific layout
+│   ├── pages/
+│   │   ├── CreateSessionPage.vue   # YouTube URL input
+│   │   ├── SessionsPage.vue        # Browse all sessions (grid/list)
+│   │   ├── CreatorSessionPage.vue  # Creator session view
+│   │   └── HelperSessionPage.vue   # Helper session view
+│   ├── stores/
+│   │   └── session-store.js        # Pinia store for session state
+│   ├── services/
+│   │   └── api.js                  # PHP backend API client
+│   └── router/
+│       └── routes.js               # Route definitions
+├── quasar.config.js                # Quasar configuration
+└── package.json
+```
+
+### Components Detail
+
+#### SessionsPage.vue
+- **Purpose**: Browse all annotation sessions
+- **Features**:
+  - Grid view: Large thumbnails (200px × 113px), cards with metadata
+  - List view: Compact horizontal items (120px × 68px thumbnails)
+  - View mode toggle (q-btn-toggle) persisted to localStorage
+  - Copy creator/helper links to clipboard
+  - Delete session button (visible without menu in list view)
+  - Shows marker count and formatted creation date
+
+#### MainLayout.vue
+- **Purpose**: Primary layout for home, sessions list, and creator view
+- **Features**:
+  - Left drawer (256px nav, 320px markers) with responsive toggle
+  - Top toolbar with app title
+  - Conditional drawer content:
+    - **Default**: Navigation links to home and sessions
+    - **In creator session**: Markers list + mini navigation buttons
+  - Main content area with router-view
+
+#### HelperLayout.vue
+- **Purpose**: Dedicated layout for helper view
+- **Features**:
+  - Left drawer (320px) shows only markers
+  - No navigation links (helpers focus on responding to markers)
+  - Marker selection updates video and thread panel
+  - Same responsive toggle behavior
+
+#### CreatorSessionPage.vue & HelperSessionPage.vue
+- **Purpose**: Main session interfaces for creator and helper roles
+- **Architecture**:
+  - Uses Pinia store for shared state
+  - Vertical single-column layout (video → timeline → thread panel)
+  - Markers accessed via left drawer
+  - Video player auto-seeks when marker selected from drawer
+
+#### ThreadPanel.vue
+- **Purpose**: Display and manage posts on markers
+- **Features**:
+  - View mode: Posts with text/audio content, color-coded by author type
+  - Edit mode: Inline textarea with save/cancel buttons (text posts only)
+  - Delete: Trash icon with confirmation dialog
+  - Create: Text input + audio recorder, "Save Post" button
+  - Date displayed below each post (outside q-item)
+  - Users can only edit/delete their own posts (based on author_type)
+
+#### session-store.js (Pinia)
+- **State**: session, selectedMarker, currentTime, videoDuration
+- **Computed**: markers (from session.markers)
+- **Actions**: setSession, updateSession, setSelectedMarker, clearSession
+- **Purpose**: Share state between drawer (MarkerList) and main content (video/thread)
+
+### Bug Fixes
+
+#### Issue 4: Post Creation Token Error
+**Problem**: "Marker ID and token are required" error when creating posts.
+
+**Root Cause**: Hash-based routing (#/creator/:id?token=...) meant token wasn't in `window.location.search`.
+
+**Solution**: Changed ThreadPanel.vue to use Vue Router's `useRoute()` composable:
+```javascript
+const route = useRoute()
+const token = route.query.token
+```
+
+**Files Modified**: ThreadPanel.vue:202
+
+---
+
+#### Issue 5: Audio Encoding Error
+**Problem**: "Failed to encode audio" error with "MPEGMode is not defined".
+
+**Root Cause**: Incorrect import statement for lamejs library.
+
+**Solution**: Changed to namespace import to load all dependencies:
+```javascript
+import * as lamejs from 'lamejs'
+```
+
+**Additional Fix**: Added proper stereo channel handling:
+```javascript
+// Encode both channels if stereo
+if (channels === 2 && bufferRight) {
+  mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk)
+} else {
+  mp3buf = mp3encoder.encodeBuffer(leftChunk)
+}
+```
+
+**Files Modified**: AudioRecorder.vue:7, AudioRecorder.vue:137-142
+
+---
+
+#### Issue 6: Video Disappearing in Helper Mode
+**Problem**: Video player disappeared after page load in helper view.
+
+**Root Cause**: Complex JavaScript resize logic (calculateHeight, resizePlayer) conflicting with Quasar's layout system.
+
+**Solution**: Removed all resize logic, simplified to fixed dimensions with CSS aspect-ratio:
+```javascript
+// Simplified player initialization
+player.value = new window.YT.Player('helper-youtube-player', {
+  videoId: props.videoId,
+  width: '100%',
+  height: '400',
+  // ...
+})
+```
+
+```css
+#helper-youtube-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+```
+
+**Files Modified**: HelperVideoPlayer.vue, CreatorVideoPlayer.vue
+
+---
+
+### API Enhancements
+
+#### List Sessions Endpoint
+**Endpoint**: `GET /api/sessions`
+
+**Purpose**: Retrieve all sessions with marker counts for sessions page.
+
+**Response**:
+```json
+{
+  "sessions": [
+    {
+      "id": "...",
+      "youtube_url": "...",
+      "youtube_title": "...",
+      "youtube_thumbnail": "...",
+      "creator_token": "...",
+      "helper_token": "...",
+      "created_at": "...",
+      "marker_count": 3
+    }
+  ]
+}
+```
+
+**Files**: api/endpoints/sessions.php, api.js
+
+---
+
+#### Update Post Endpoint
+**Endpoint**: `PUT /api/posts/:id?token=...`
+
+**Purpose**: Edit text content of existing posts.
+
+**Request Body**:
+```json
+{
+  "text_content": "Updated message"
+}
+```
+
+**Validation**:
+- Token must be valid
+- User must be post author (author_type matches role)
+- Text content required
+
+**Files**: api/endpoints/posts.php, api.js
+
+---
+
+#### Delete Post Endpoint
+**Endpoint**: `DELETE /api/posts/:id?token=...`
+
+**Purpose**: Delete posts and associated audio files.
+
+**Validation**:
+- Token must be valid
+- User must be post author (author_type matches role)
+
+**Side Effects**:
+- Deletes audio file from filesystem if exists
+- Removes post record from database
+
+**Files**: api/endpoints/posts.php, api.js, api/index.php
+
+---
+
+### Updated Features
+
+#### Core Features Additions
+- ✅ Session browsing with grid/list views
+- ✅ Post editing (inline, text-only)
+- ✅ Post deletion with confirmation
+- ✅ Drawer-based navigation with conditional content
+- ✅ Pinia state management
+- ✅ Full CRUD for posts (create, read, update, delete)
+
+#### Testing Checklist Updates
+- [x] Session list view (grid and list modes)
+- [x] View mode persistence (localStorage)
+- [x] Copy creator/helper links from sessions page
+- [x] Delete sessions from sessions page
+- [x] Post editing (text posts only)
+- [x] Post deletion with confirmation
+- [x] Owner-only edit/delete restrictions
+- [x] Vertical full-width layout (creator and helper)
+- [x] Markers in left drawer
+- [x] Pinia store state synchronization
+
+### Known Issues
+
+1. **iOS Audio Recording**: Needs device testing (stereo/mono handling may vary)
+2. **ESLint Warnings**: Some false positives during development (resolve with dev server restart)
+
+### Future Work
+
+- [ ] Migrate Quasar frontend to support Supabase backend (currently PHP only)
+- [ ] Add session search/filtering
+- [ ] Implement marker descriptions/notes
+- [ ] Add keyboard shortcuts for common actions
+- [x] ~~Session list/management~~ (Completed)
+- [x] ~~Edit existing posts~~ (Completed)
+
+---
+
 ## Git Commits
 
 ```
+411f3db Quasar refactor: session list, layout improvements, post editing/deletion
+9b9ff37 working on quasar
+9584279 Add comprehensive README with setup instructions for both backends
+75def9e Refactor to unified frontend with backend adapter pattern
+dbabc8f Add complete Supabase backend implementation
 b332e80 Update CLAUDE.md with Enhancement #3
 339d943 Add current time indicator to timeline
 b4a236b Update CLAUDE.md with Enhancement #2
@@ -499,8 +812,7 @@ b4a236b Update CLAUDE.md with Enhancement #2
 
 ## Session Summary
 
-**Date**: January 4-5, 2026
-
+### Initial Implementation (January 4-5, 2026)
 **Tasks Completed**:
 1. ✅ Complete PHP backend + frontend
 2. ✅ Fixed routing issues
@@ -516,9 +828,24 @@ b4a236b Update CLAUDE.md with Enhancement #2
 12. ✅ **Backend adapter pattern**
 13. ✅ **Eliminated duplicate code**
 
-**Current Status**: Single frontend supporting both backends, all features functional
+### Quasar Refactor (January 6, 2026)
+**Tasks Completed**:
+1. ✅ **Quasar Framework migration** - Professional UI components
+2. ✅ **Session list page** - Grid/list views with toggle
+3. ✅ **Layout refactoring** - Vertical full-width with drawer navigation
+4. ✅ **Pinia state management** - Centralized session state
+5. ✅ **Post editing** - Inline editing for text posts
+6. ✅ **Post deletion** - With confirmation dialog
+7. ✅ **Bug fixes** - Token extraction, audio encoding, video player
+8. ✅ **API enhancements** - List sessions, update/delete posts
+9. ✅ **Separate video players** - Creator and helper specific components
+10. ✅ **Owner-only restrictions** - Users can only edit/delete own posts
 
-**Ready For**: Production deployment (choose backend via env var), iOS testing
+**Current Status**:
+- **Original frontend** (`/frontend`): Supports both PHP and Supabase backends
+- **Quasar frontend** (`/frontend-quasar`): PHP backend only, enhanced UI/UX
+
+**Ready For**: Production deployment, iOS testing, Supabase migration for Quasar
 
 ---
 

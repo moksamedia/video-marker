@@ -69,6 +69,7 @@
           :markers="sessionStore.markers"
           :current-time="sessionStore.currentTime"
           :duration="sessionStore.videoDuration"
+          :selected-marker="sessionStore.selectedMarker"
           @marker-click="selectMarker"
           @seek="seekTo"
           class="q-mb-md"
@@ -77,8 +78,12 @@
         <!-- Thread Panel - Full Width -->
         <ThreadPanel
           :marker="sessionStore.selectedMarker"
+          :markers="sessionStore.markers"
           role="creator"
           @post-created="refreshSession"
+          @marker-selected="sessionStore.setSelectedMarker"
+          @seek="handleSeek"
+          @play-from-marker="handlePlayFromMarker"
         />
       </div>
     </div>
@@ -119,11 +124,17 @@ watch(() => sessionStore.selectedMarker, (newMarker) => {
 
 onMounted(() => {
   loadSession()
+
+  // Add spacebar listener for play/pause
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // Clear session when leaving
   sessionStore.clearSession()
+
+  // Remove spacebar listener
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 async function loadSession() {
@@ -207,6 +218,21 @@ function seekTo(time) {
   }
 }
 
+function handleSeek(deltaSeconds) {
+  if (videoPlayerRef.value) {
+    const currentTime = sessionStore.currentTime
+    const newTime = Math.max(0, currentTime + deltaSeconds)
+    videoPlayerRef.value.seekToTime(newTime)
+  }
+}
+
+function handlePlayFromMarker(startTime) {
+  if (videoPlayerRef.value) {
+    videoPlayerRef.value.seekToTime(startTime)
+    videoPlayerRef.value.play()
+  }
+}
+
 function getYouTubeId(url) {
   const match = url.match(/[?&]v=([^&]+)/)
   return match ? match[1] : ''
@@ -220,6 +246,27 @@ function copyHelperLink() {
     icon: 'content_copy',
     timeout: 1500,
   })
+}
+
+function handleKeyDown(event) {
+  // Spacebar for play/pause
+  if (event.code === 'Space' || event.key === ' ') {
+    // Don't override spacebar if user is typing in an input or textarea
+    const target = event.target
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return
+    }
+
+    // Prevent default scrolling behavior and button triggers
+    event.preventDefault()
+    if (videoPlayerRef.value) {
+      videoPlayerRef.value.togglePlayPause()
+    }
+  }
 }
 </script>
 

@@ -1,5 +1,6 @@
 <template>
   <div class="audio-recorder">
+    <!--
     <div v-if="!isRecording && !audioBlob" class="row q-gutter-sm">
       <q-btn
         color="negative"
@@ -9,6 +10,7 @@
         :disable="!hasPermission"
       />
     </div>
+    -->
 
     <div v-if="isRecording" class="recording-controls">
       <q-card flat bordered>
@@ -18,8 +20,11 @@
             <div class="text-weight-medium">Recording...</div>
             <div class="text-caption">{{ formatDuration(recordingDuration) }} / 5:00</div>
           </div>
-          <q-btn flat round color="negative" icon="stop" @click="stopRecording">
-            <q-tooltip>Stop recording</q-tooltip>
+          <q-btn flat round color="positive" icon="check" @click="stopRecording">
+            <q-tooltip>Done</q-tooltip>
+          </q-btn>
+          <q-btn flat round color="negative" icon="close" @click="cancelRecording">
+            <q-tooltip>Cancel recording</q-tooltip>
           </q-btn>
         </q-card-section>
         <q-linear-progress :value="recordingProgress" color="negative" />
@@ -36,6 +41,7 @@
 
           <audio ref="previewAudio" controls class="full-width q-mb-sm"></audio>
 
+          <!--
           <div class="row q-gutter-sm">
             <q-btn flat color="negative" icon="delete" label="Discard" @click="discardRecording" />
             <q-space />
@@ -46,6 +52,7 @@
               @click="$emit('audioReady', audioBlob)"
             />
           </div>
+          -->
         </q-card-section>
       </q-card>
     </div>
@@ -66,7 +73,14 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
 import lamejs from '@breezystack/lamejs'
 
-defineEmits(['audioReady'])
+const props = defineProps({
+  autoStart: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['audioReady', 'cancel'])
 
 const $q = useQuasar()
 
@@ -86,6 +100,11 @@ onMounted(async () => {
   try {
     await navigator.mediaDevices.getUserMedia({ audio: true })
     hasPermission.value = true
+
+    // Auto-start recording if prop is set
+    if (props.autoStart) {
+      startRecording()
+    }
   } catch {
     hasPermission.value = false
     $q.notify({
@@ -118,8 +137,8 @@ async function startRecording() {
     }
 
     mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-      await encodeToMP3(audioBlob)
+      const webmBlob = new Blob(audioChunks, { type: 'audio/webm' })
+      await encodeToMP3(webmBlob)
       stream.getTracks().forEach((track) => track.stop())
     }
 
@@ -159,6 +178,24 @@ function stopRecording() {
       durationInterval = null
     }
   }
+}
+
+function cancelRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+    isRecording.value = false
+
+    if (durationInterval) {
+      clearInterval(durationInterval)
+      durationInterval = null
+    }
+  }
+
+  // Reset state and emit cancel
+  audioBlob.value = null
+  recordingDuration.value = 0
+  recordingProgress.value = 0
+  emit('cancel')
 }
 
 async function encodeToMP3(webmBlob) {
@@ -219,9 +256,14 @@ async function encodeToMP3(webmBlob) {
 
     audioBlob.value = new Blob(mp3Data, { type: 'audio/mp3' })
 
-    // Set up preview
-    if (previewAudio.value) {
-      previewAudio.value.src = URL.createObjectURL(audioBlob.value)
+    // If autoStart, emit immediately without preview
+    if (props.autoStart) {
+      emit('audioReady', audioBlob.value)
+    } else {
+      // Set up preview for manual flow
+      if (previewAudio.value) {
+        previewAudio.value.src = URL.createObjectURL(audioBlob.value)
+      }
     }
   } catch (err) {
     console.error('Audio encoding error:', err)
@@ -233,6 +275,7 @@ async function encodeToMP3(webmBlob) {
   }
 }
 
+/*
 function discardRecording() {
   audioBlob.value = null
   recordingDuration.value = 0
@@ -242,6 +285,7 @@ function discardRecording() {
     previewAudio.value.src = ''
   }
 }
+  */
 
 function formatDuration(seconds) {
   const mins = Math.floor(seconds / 60)

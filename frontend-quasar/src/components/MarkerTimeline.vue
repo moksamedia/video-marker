@@ -11,6 +11,7 @@
             v-for="marker in pointMarkers"
             :key="marker.id"
             class="timeline-marker point-marker"
+            :class="{ 'selected-marker': isSelectedMarker(marker) }"
             :style="{ left: getMarkerPosition(marker.start_time) + '%' }"
             @click.stop="$emit('markerClick', marker)"
           >
@@ -22,6 +23,7 @@
             v-for="marker in rangeMarkers"
             :key="marker.id"
             class="timeline-marker range-marker"
+            :class="{ 'selected-marker': isSelectedMarker(marker) }"
             :style="{
               left: getMarkerPosition(marker.start_time) + '%',
               width: getRangeWidth(marker.start_time, marker.end_time) + '%',
@@ -60,6 +62,10 @@ const props = defineProps({
   duration: {
     type: Number,
     default: 0,
+  },
+  selectedMarker: {
+    type: Object,
+    default: null,
   },
 })
 
@@ -106,6 +112,10 @@ function formatTime(seconds) {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+function isSelectedMarker(marker) {
+  return props.selectedMarker && props.selectedMarker.id === marker.id
+}
 </script>
 
 <style scoped>
@@ -150,5 +160,23 @@ function formatTime(seconds) {
   background: rgba(255, 193, 7, 0.6);
   border: 2px solid #ffc107;
   border-radius: 4px;
+}
+
+.selected-marker {
+  outline: 3px solid white;
+  outline-offset: 2px;
+  z-index: 5;
+}
+
+.point-marker.selected-marker {
+  background: #ff0000;
+  width: 6px;
+  transform: scaleY(1.2);
+}
+
+.range-marker.selected-marker {
+  background: rgba(255, 193, 7, 0.9);
+  border-color: #ff9800;
+  border-width: 3px;
 }
 </style>
