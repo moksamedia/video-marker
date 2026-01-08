@@ -7,6 +7,23 @@
 # Configuration
 # ============================================
 DEPLOY_DOMAIN="${DEPLOY_DOMAIN:-videomark.learntibetanlanguage.org}"
+FTP_HOST="$DEPLOY_DOMAIN"
+FTP_USERNAME="${FTP_USERNAME:-videomark@videomark.learntibetanlanguage.org}"
+FTP_REMOTE_DIR="/"
+
+# Parse command line arguments
+FTP_PASSWORD=""
+while getopts "p:" opt; do
+  case $opt in
+    p)
+      FTP_PASSWORD="$OPTARG"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
 
 set -e  # Exit on error
 
@@ -198,13 +215,80 @@ echo ""
 echo "📁 Deployment files are in: ./dist"
 echo "🌐 Target domain: $DEPLOY_DOMAIN"
 echo ""
-echo "Next steps:"
-echo "  1. Edit dist/server/config.php and set BASE_URL to 'https://$DEPLOY_DOMAIN/'"
-echo "  2. Read dist/DEPLOY_INSTRUCTIONS.txt"
-echo "  3. Upload dist/* to your web host"
-echo ""
-echo "For detailed instructions, see PHP_DEPLOY.md"
-echo ""
-echo "💡 To build for a different domain, run:"
-echo "   DEPLOY_DOMAIN=yourdomain.com ./build-deploy.sh"
+
+# FTP Upload if password provided
+if [ -n "$FTP_PASSWORD" ]; then
+  echo "📤 Deploying to server via FTP..."
+  echo "   Host: $FTP_HOST"
+  echo "   User: $FTP_USERNAME"
+  echo "   Remote directory: $FTP_REMOTE_DIR"
+  echo ""
+
+  # Check if lftp is available (better for recursive uploads)
+  if command -v lftp &> /dev/null; then
+    echo "Using lftp for deployment..."
+    lftp -c "
+      set ssl:verify-certificate no;
+      open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_HOST;
+      cd $FTP_REMOTE_DIR;
+      mirror -R --verbose dist/ ./;
+      quit
+    "
+
+    if [ $? -eq 0 ]; then
+      echo ""
+      echo "✅ Deployment successful!"
+      echo ""
+      echo "🌐 Your app should now be live at: https://$DEPLOY_DOMAIN"
+    else
+      echo ""
+      echo "❌ FTP upload failed!"
+      exit 1
+    fi
+  else
+    echo "⚠️  lftp not found. For best results, install it:"
+    echo "   macOS: brew install lftp"
+    echo "   Linux: apt-get install lftp or yum install lftp"
+    echo ""
+    echo "Falling back to basic ftp (may not upload all nested directories)..."
+    echo ""
+
+    # Basic FTP upload (limited)
+    ftp -n $FTP_HOST << FTPEOF
+user $FTP_USERNAME $FTP_PASSWORD
+binary
+cd $FTP_REMOTE_DIR
+lcd dist
+prompt off
+mput *
+bye
+FTPEOF
+
+    if [ $? -eq 0 ]; then
+      echo ""
+      echo "⚠️  Basic FTP upload complete, but may be incomplete"
+      echo "   Install lftp for full recursive deployment"
+      echo ""
+      echo "🌐 Check: https://$DEPLOY_DOMAIN"
+    else
+      echo ""
+      echo "❌ FTP upload failed!"
+      exit 1
+    fi
+  fi
+else
+  echo "Next steps:"
+  echo "  1. Edit dist/server/config.php and set BASE_URL to 'https://$DEPLOY_DOMAIN/'"
+  echo "  2. Read dist/DEPLOY_INSTRUCTIONS.txt"
+  echo "  3. Upload dist/* to your web host"
+  echo ""
+  echo "For detailed instructions, see PHP_DEPLOY.md"
+  echo ""
+  echo "💡 To build for a different domain, run:"
+  echo "   DEPLOY_DOMAIN=yourdomain.com ./build-deploy.sh"
+  echo ""
+  echo "💡 To build AND deploy via FTP, run:"
+  echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD"
+fi
+
 echo ""
