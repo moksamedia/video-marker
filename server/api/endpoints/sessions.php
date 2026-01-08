@@ -39,20 +39,21 @@ class SessionsEndpoint {
             return ['error' => 'youtube_url is required'];
         }
 
-        if (!isset($data['session_name']) || trim($data['session_name']) === '') {
-            http_response_code(400);
-            return ['error' => 'session_name is required'];
-        }
+        // Generate session ID based on whether a name was provided
+        if (isset($data['session_name']) && trim($data['session_name']) !== '') {
+            // Convert session name to URL-safe slug
+            $sessionId = $this->generateSlug($data['session_name']);
 
-        // Convert session name to URL-safe slug
-        $sessionId = $this->generateSlug($data['session_name']);
-
-        // Check if session ID already exists
-        $stmt = $this->pdo->prepare('SELECT id FROM sessions WHERE id = ?');
-        $stmt->execute([$sessionId]);
-        if ($stmt->fetch()) {
-            http_response_code(409);
-            return ['error' => 'A session with this name already exists. Please choose a different name.'];
+            // Check if session ID already exists
+            $stmt = $this->pdo->prepare('SELECT id FROM sessions WHERE id = ?');
+            $stmt->execute([$sessionId]);
+            if ($stmt->fetch()) {
+                http_response_code(409);
+                return ['error' => 'A session with this name already exists. Please choose a different name.'];
+            }
+        } else {
+            // Generate random ID like before
+            $sessionId = $this->auth->generateSessionId();
         }
 
         // Fetch YouTube video metadata

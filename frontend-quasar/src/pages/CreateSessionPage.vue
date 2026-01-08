@@ -14,17 +14,16 @@
             <q-input
               v-model="sessionName"
               outlined
-              label="Session Name"
+              label="Session Name (Optional)"
               placeholder="My Tibetan Lesson"
               :disable="isLoading"
               :rules="[
-                (val) => !!val || 'Session name is required',
-                (val) => val.length >= 3 || 'Name must be at least 3 characters',
-                (val) => val.length <= 50 || 'Name must be less than 50 characters'
+                (val) => !val || val.length >= 3 || 'Name must be at least 3 characters',
+                (val) => !val || val.length <= 50 || 'Name must be less than 50 characters'
               ]"
               lazy-rules
               class="q-mb-md"
-              hint="This will be used in the URL (e.g. my-tibetan-lesson)"
+              hint="Optional: Custom name for your URL (e.g. my-tibetan-lesson). Leave blank for random ID."
             >
               <template v-slot:prepend>
                 <q-icon name="label" />
@@ -55,7 +54,7 @@
               type="submit"
               color="primary"
               :loading="isLoading"
-              :disable="!youtubeUrl || !sessionName"
+              :disable="!youtubeUrl"
               class="full-width q-mt-md"
               size="lg"
             >
@@ -193,7 +192,9 @@ async function createSession() {
   error.value = null
 
   try {
-    sessionData.value = await apiService.createSession(youtubeUrl.value, slugPreview.value)
+    // Only pass session name if provided
+    const name = sessionName.value ? slugPreview.value : null
+    sessionData.value = await apiService.createSession(youtubeUrl.value, name)
     $q.notify({
       type: 'positive',
       message: 'Session created successfully!',
