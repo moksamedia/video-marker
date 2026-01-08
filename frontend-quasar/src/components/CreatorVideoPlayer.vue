@@ -12,6 +12,15 @@
           :disable="!player"
         />
 
+        <q-btn
+          v-if="selectedMarker"
+          color="negative"
+          icon="delete_outline"
+          label="Delete Marker"
+          @click="confirmDeleteMarker"
+          outline
+        />
+
         <!--
         <q-btn
           v-if="!rangeStart"
@@ -105,9 +114,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  selectedMarker: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['currentTimeUpdate', 'createMarker', 'deleteSession', 'durationUpdate'])
+const emit = defineEmits(['currentTimeUpdate', 'createMarker', 'deleteSession', 'durationUpdate', 'deleteMarker'])
 
 const $q = useQuasar()
 const playerEl = ref(null)
@@ -273,6 +286,19 @@ function confirmDeleteSession() {
     persistent: true,
   }).onOk(() => {
     emit('deleteSession')
+  })
+}
+
+function confirmDeleteMarker() {
+  if (!props.selectedMarker) return
+
+  $q.dialog({
+    title: 'Delete Marker',
+    message: 'Are you sure you want to delete this marker? This will also delete all posts on this marker.',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    emit('deleteMarker', props.selectedMarker.id)
   })
 }
 

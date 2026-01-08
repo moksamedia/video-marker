@@ -71,10 +71,12 @@
         <CreatorVideoPlayer
           ref="videoPlayerRef"
           :video-id="getYouTubeId(sessionStore.session.youtube_url)"
+          :selected-marker="sessionStore.selectedMarker"
           @current-time-update="sessionStore.setCurrentTime($event)"
           @duration-update="sessionStore.setVideoDuration($event)"
           @create-marker="handleCreateMarker"
           @delete-session="handleDeleteSession"
+          @delete-marker="handleDeleteMarker"
           class="q-mb-md"
         />
 
@@ -253,6 +255,29 @@ async function handleDeleteSession() {
     $q.notify({
       type: 'negative',
       message: err.response?.data?.error || 'Failed to delete session',
+      icon: 'error',
+    })
+  }
+}
+
+async function handleDeleteMarker(markerId) {
+  try {
+    const token = route.query.token
+    await apiService.deleteMarker(markerId, token)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Marker deleted',
+      icon: 'delete',
+    })
+
+    // Clear selection and refresh
+    sessionStore.setSelectedMarker(null)
+    await refreshSession()
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.response?.data?.error || 'Failed to delete marker',
       icon: 'error',
     })
   }
