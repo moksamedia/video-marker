@@ -1,6 +1,34 @@
 <template>
   <q-page class="flex flex-center">
     <div class="q-pa-md" style="max-width: 600px; width: 100%">
+      <!-- Video Preview (shown when URL is valid) -->
+      <q-card v-if="videoMetadata || isFetchingMetadata" class="q-mb-md">
+        <div class="row items-center q-pa-md">
+          <q-skeleton
+            v-if="isFetchingMetadata"
+            type="rect"
+            style="width: 120px; height: 90px"
+            class="rounded-borders"
+          />
+          <q-img
+            v-else
+            :src="videoMetadata.thumbnail_url"
+            style="width: 120px; height: 90px"
+            class="rounded-borders"
+          />
+          <div class="q-ml-md col">
+            <div class="text-subtitle1 text-weight-medium">
+              <q-skeleton v-if="isFetchingMetadata" type="text" />
+              <template v-else>{{ videoMetadata.title }}</template>
+            </div>
+            <div class="text-caption text-grey-7">
+              <q-icon name="play_circle" size="xs" />
+              YouTube Video
+            </div>
+          </div>
+        </div>
+      </q-card>
+
       <q-card>
         <q-card-section>
           <div class="text-h5">Create New Session</div>
@@ -149,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { apiService } from 'src/services/api'
@@ -162,6 +190,8 @@ const youtubeUrl = ref('')
 const isLoading = ref(false)
 const error = ref(null)
 const sessionData = ref(null)
+const videoMetadata = ref(null)
+const isFetchingMetadata = ref(false)
 
 // Generate URL slug preview
 const slugPreview = computed(() => {
@@ -186,6 +216,54 @@ const helperUrl = computed(() => {
   const base = window.location.origin
   return `${base}/#/helper/${sessionData.value.id}?token=${sessionData.value.helper_token}`
 })
+
+// Watch for YouTube URL changes to fetch metadata
+watch(youtubeUrl, async (newUrl) => {
+  // Clear previous metadata
+  videoMetadata.value = null
+
+  // Don't fetch if URL is empty
+  if (!newUrl || newUrl.trim() === '') {
+    return
+  }
+
+  // Basic YouTube URL validation
+  const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+/
+  if (!youtubeRegex.test(newUrl)) {
+    return
+  }
+
+  await fetchVideoMetadata(newUrl)
+})
+
+async function fetchVideoMetadata(url) {
+  isFetchingMetadata.value = true
+
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+    const response = await fetch(oembedUrl)
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch video metadata')
+    }
+
+    const data = await response.json()
+    videoMetadata.value = data
+
+    // Auto-populate session name with truncated title (max 50 chars)
+    if (data.title && !sessionName.value) {
+      const truncatedTitle = data.title.length > 50
+        ? data.title.substring(0, 50).trim()
+        : data.title
+      sessionName.value = truncatedTitle
+    }
+  } catch (err) {
+    // Silently fail - don't show error to user for metadata fetch
+    console.error('Failed to fetch video metadata:', err)
+  } finally {
+    isFetchingMetadata.value = false
+  }
+}
 
 async function createSession() {
   isLoading.value = true
