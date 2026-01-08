@@ -22,6 +22,8 @@ FTP_REMOTE_DIR="/"
 # Parse command line arguments
 DEPLOY_METHOD=""
 DEPLOY_PASSWORD=""
+CLEAN_DEPLOY=false
+DEPLOY_TARGET="both"  # both, frontend, server
 
 # Manual parsing to support optional password for -r
 while [[ $# -gt 0 ]]; do
@@ -46,14 +48,30 @@ while [[ $# -gt 0 ]]; do
       fi
       shift
       ;;
+    --clean)
+      CLEAN_DEPLOY=true
+      shift
+      ;;
+    --frontend-only)
+      DEPLOY_TARGET="frontend"
+      shift
+      ;;
+    --server-only)
+      DEPLOY_TARGET="server"
+      shift
+      ;;
     -h)
       echo "Usage: $0 [options]"
       echo ""
       echo "Options:"
-      echo "  -r [PASSWORD]  Deploy via rsync/SSH (fast, recommended)"
-      echo "                 Password optional if using SSH key authentication"
-      echo "  -p PASSWORD    Deploy via FTP (slower, for basic hosting)"
-      echo "  -h             Show this help"
+      echo "  -r [PASSWORD]     Deploy via rsync/SSH (fast, recommended)"
+      echo "                    Password optional if using SSH key authentication"
+      echo "  -p PASSWORD       Deploy via FTP (slower, for basic hosting)"
+      echo "  --clean           Delete database and audio on server (fresh start)"
+      echo "                    Default: preserves existing data"
+      echo "  --frontend-only   Deploy only frontend files (faster for UI changes)"
+      echo "  --server-only     Deploy only server files (faster for backend changes)"
+      echo "  -h                Show this help"
       echo ""
       echo "Environment variables:"
       echo "  DEPLOY_DOMAIN  Target domain (default: videomark.learntibetanlanguage.org)"
@@ -291,12 +309,36 @@ if [ "$DEPLOY_METHOD" = "rsync" ]; then
   echo "   Remote directory: $SSH_REMOTE_DIR"
   echo ""
 
+  # Build rsync options based on flags
+  RSYNC_OPTS=""
+
+  # Handle deploy target (frontend-only, server-only, or both)
+  if [ "$DEPLOY_TARGET" = "frontend" ]; then
+    RSYNC_OPTS="$RSYNC_OPTS --exclude=server/"
+    echo "📱 Frontend-only deployment (excluding server/)"
+  elif [ "$DEPLOY_TARGET" = "server" ]; then
+    RSYNC_OPTS="$RSYNC_OPTS --include=server/*** --exclude=*"
+    echo "🖥️  Server-only deployment"
+  else
+    echo "📦 Full deployment (frontend + server)"
+  fi
+
+  # Preserve server state (unless --clean is used)
+  if [ "$CLEAN_DEPLOY" = false ]; then
+    RSYNC_OPTS="$RSYNC_OPTS --exclude=database.sqlite --exclude=audio/ --exclude=server/database.sqlite --exclude=server/audio/"
+    echo "⚠️  Preserving server state (database.sqlite, audio/)"
+    echo "   Use --clean flag to delete and start fresh"
+  else
+    echo "⚠️  CLEAN DEPLOY: Will overwrite database and audio files!"
+  fi
+  echo ""
+
   # Check if password was provided
   if [ -n "$DEPLOY_PASSWORD" ]; then
     # Password provided - use sshpass
     if command -v sshpass &> /dev/null; then
       echo "Using rsync with password authentication..."
-      sshpass -p "$DEPLOY_PASSWORD" rsync -avz --delete \
+      sshpass -p "$DEPLOY_PASSWORD" rsync -avz --delete $RSYNC_OPTS \
         -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
         dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
     else
@@ -309,7 +351,7 @@ if [ "$DEPLOY_METHOD" = "rsync" ]; then
   else
     # No password - use SSH key authentication
     echo "Using rsync with SSH key authentication..."
-    rsync -avz --delete \
+    rsync -avz --delete $RSYNC_OPTS \
       -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
       dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
   fi
@@ -331,14 +373,46 @@ elif [ "$DEPLOY_METHOD" = "ftp" ]; then
   echo "   Remote directory: $FTP_REMOTE_DIR"
   echo ""
 
+  # Build lftp options based on flags
+  LFTP_EXCLUDE=""
+  LFTP_SOURCE="dist/"
+
+  # Handle deploy target (frontend-only, server-only, or both)
+  if [ "$DEPLOY_TARGET" = "frontend" ]; then
+    LFTP_EXCLUDE="$LFTP_EXCLUDE --exclude server/"
+    echo "📱 Frontend-only deployment (excluding server/)"
+  elif [ "$DEPLOY_TARGET" = "server" ]; then
+    LFTP_SOURCE="dist/server/"
+    echo "🖥️  Server-only deployment"
+  else
+    echo "📦 Full deployment (frontend + server)"
+  fi
+
+  # Preserve server state (unless --clean is used)
+  if [ "$CLEAN_DEPLOY" = false ]; then
+    LFTP_EXCLUDE="$LFTP_EXCLUDE --exclude database.sqlite --exclude audio/ --exclude server/database.sqlite --exclude server/audio/"
+    echo "⚠️  Preserving server state (database.sqlite, audio/)"
+    echo "   Use --clean flag to delete and start fresh"
+  else
+    echo "⚠️  CLEAN DEPLOY: Will overwrite database and audio files!"
+  fi
+  echo ""
+
+  # Determine FTP target path
+  if [ "$DEPLOY_TARGET" = "server" ]; then
+    FTP_TARGET_DIR="$FTP_REMOTE_DIR/server"
+  else
+    FTP_TARGET_DIR="$FTP_REMOTE_DIR"
+  fi
+
   # Check if lftp is available (better for recursive uploads)
   if command -v lftp &> /dev/null; then
     echo "Using lftp for deployment..."
     lftp -c "
       set ssl:verify-certificate no;
       open -u $FTP_USERNAME,$DEPLOY_PASSWORD $FTP_HOST;
-      cd $FTP_REMOTE_DIR;
-      mirror -R --verbose dist/ ./;
+      cd $FTP_TARGET_DIR;
+      mirror -R --verbose $LFTP_EXCLUDE $LFTP_SOURCE ./;
       quit
     "
 

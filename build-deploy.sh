@@ -13,13 +13,26 @@ FTP_REMOTE_DIR="/"
 
 # Parse command line arguments
 FTP_PASSWORD=""
-while getopts "p:" opt; do
-  case $opt in
-    p)
-      FTP_PASSWORD="$OPTARG"
+CLEAN_DEPLOY=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -p)
+      if [[ -n "$2" && "$2" != -* ]]; then
+        FTP_PASSWORD="$2"
+        shift
+      else
+        echo "❌ Error: -p requires a password argument" >&2
+        exit 1
+      fi
+      shift
       ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
+    --clean)
+      CLEAN_DEPLOY=true
+      shift
+      ;;
+    *)
+      echo "❌ Error: Unknown option: $1" >&2
+      echo "Usage: $0 [-p FTP_PASSWORD] [--clean]"
       exit 1
       ;;
   esac
@@ -224,6 +237,17 @@ if [ -n "$FTP_PASSWORD" ]; then
   echo "   Remote directory: $FTP_REMOTE_DIR"
   echo ""
 
+  # Exclude patterns to preserve server state (unless --clean is used)
+  LFTP_EXCLUDE=""
+  if [ "$CLEAN_DEPLOY" = false ]; then
+    LFTP_EXCLUDE="--exclude database.sqlite --exclude audio/ --exclude server/database.sqlite --exclude server/audio/"
+    echo "⚠️  Preserving server state (database.sqlite, audio/)"
+    echo "   Use --clean flag to delete and start fresh"
+  else
+    echo "⚠️  CLEAN DEPLOY: Will overwrite database and audio files!"
+  fi
+  echo ""
+
   # Check if lftp is available (better for recursive uploads)
   if command -v lftp &> /dev/null; then
     echo "Using lftp for deployment..."
@@ -231,7 +255,7 @@ if [ -n "$FTP_PASSWORD" ]; then
       set ssl:verify-certificate no;
       open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_HOST;
       cd $FTP_REMOTE_DIR;
-      mirror -R --verbose dist/ ./;
+      mirror -R --verbose $LFTP_EXCLUDE dist/ ./;
       quit
     "
 
@@ -289,6 +313,9 @@ else
   echo ""
   echo "💡 To build AND deploy via FTP, run:"
   echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD"
+  echo ""
+  echo "💡 To deploy and overwrite database/audio (fresh start):"
+  echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD --clean"
 fi
 
 echo ""
