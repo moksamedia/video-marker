@@ -71,6 +71,7 @@
           :marker="sessionStore.selectedMarker"
           :markers="sessionStore.markers"
           role="helper"
+          :token="sessionToken"
           @post-created="refreshSession"
           @marker-selected="sessionStore.setSelectedMarker"
           @seek="handleSeek"
@@ -99,6 +100,7 @@ const sessionStore = useSessionStore()
 const loading = ref(true)
 const error = ref(null)
 const videoPlayerRef = ref(null)
+const sessionToken = ref(null)  // Store token to prevent Android query param issues
 
 // Marker navigation
 const currentMarkerIndex = computed(() => {
@@ -150,6 +152,9 @@ async function loadSession() {
       return
     }
 
+    // Store token for later use (prevents Android query param issues)
+    sessionToken.value = token
+
     const sessionData = await apiService.getSession(route.params.id, token)
 
     if (sessionData.role !== 'helper') {
@@ -167,8 +172,8 @@ async function loadSession() {
 
 async function refreshSession() {
   try {
-    const token = route.query.token
-    const sessionData = await apiService.getSession(route.params.id, token)
+    // Use stored token instead of route.query.token (Android fix)
+    const sessionData = await apiService.getSession(route.params.id, sessionToken.value)
     sessionStore.updateSession(sessionData)
   } catch {
     $q.notify({

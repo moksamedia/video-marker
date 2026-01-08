@@ -118,6 +118,7 @@
           :marker="sessionStore.selectedMarker"
           :markers="sessionStore.markers"
           role="creator"
+          :token="sessionToken"
           @post-created="refreshSession"
           @marker-selected="sessionStore.setSelectedMarker"
           @seek="handleSeek"
@@ -147,6 +148,7 @@ const sessionStore = useSessionStore()
 const loading = ref(true)
 const error = ref(null)
 const videoPlayerRef = ref(null)
+const sessionToken = ref(null)  // Store token to prevent Android query param issues
 
 const helperUrl = computed(() => {
   if (!sessionStore.session) return ''
@@ -201,6 +203,9 @@ async function loadSession() {
       return
     }
 
+    // Store token for later use (prevents Android query param issues)
+    sessionToken.value = token
+
     const sessionData = await apiService.getSession(route.params.id, token)
 
     if (sessionData.role !== 'creator') {
@@ -218,8 +223,8 @@ async function loadSession() {
 
 async function refreshSession() {
   try {
-    const token = route.query.token
-    const sessionData = await apiService.getSession(route.params.id, token)
+    // Use stored token instead of route.query.token (Android fix)
+    const sessionData = await apiService.getSession(route.params.id, sessionToken.value)
     sessionStore.updateSession(sessionData)
   } catch {
     $q.notify({
@@ -232,8 +237,7 @@ async function refreshSession() {
 
 async function handleCreateMarker(startTime, endTime) {
   try {
-    const token = route.query.token
-    await apiService.createMarker(route.params.id, token, startTime, endTime)
+    await apiService.createMarker(route.params.id, sessionToken.value, startTime, endTime)
     await refreshSession()
   } catch (err) {
     throw new Error(err.response?.data?.error || 'Failed to create marker')
@@ -242,8 +246,7 @@ async function handleCreateMarker(startTime, endTime) {
 
 async function handleDeleteSession() {
   try {
-    const token = route.query.token
-    await apiService.deleteSession(route.params.id, token)
+    await apiService.deleteSession(route.params.id, sessionToken.value)
 
     $q.notify({
       type: 'positive',
@@ -263,8 +266,7 @@ async function handleDeleteSession() {
 
 async function handleDeleteMarker(markerId) {
   try {
-    const token = route.query.token
-    await apiService.deleteMarker(markerId, token)
+    await apiService.deleteMarker(markerId, sessionToken.value)
 
     $q.notify({
       type: 'positive',

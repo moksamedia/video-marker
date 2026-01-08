@@ -356,6 +356,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  token: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -394,8 +398,7 @@ async function slipMarker(seconds) {
   const newEndTime = props.marker.end_time ? props.marker.end_time + seconds : null
 
   try {
-    const token = route.query.token
-    await apiService.updateMarker(props.marker.id, token, newStartTime, newEndTime)
+    await apiService.updateMarker(props.marker.id, props.token, newStartTime, newEndTime)
 
     $q.notify({
       type: 'positive',
@@ -433,13 +436,12 @@ async function savePost() {
   isSaving.value = true
 
   try {
-    const token = route.query.token
-    if (!token) {
+    if (!props.token) {
       throw new Error('Token not found')
     }
     await apiService.createPost(
       props.marker.id,
-      token,
+      props.token,
       textContent.value.trim() || null,
       audioBlob.value,
     )
@@ -569,12 +571,11 @@ function confirmDeletePost(post) {
 
 async function handleDeletePost(postId) {
   try {
-    const token = route.query.token
-    if (!token) {
+    if (!props.token) {
       throw new Error('Token not found')
     }
 
-    await apiService.deletePost(postId, token)
+    await apiService.deletePost(postId, props.token)
 
     $q.notify({
       type: 'positive',
@@ -614,12 +615,11 @@ async function saveEdit(post) {
   }
 
   try {
-    const token = route.query.token
-    if (!token) {
+    if (!props.token) {
       throw new Error('Token not found')
     }
 
-    await apiService.updatePost(post.id, token, editingText.value.trim())
+    await apiService.updatePost(post.id, props.token, editingText.value.trim())
 
     $q.notify({
       type: 'positive',
