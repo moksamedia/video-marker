@@ -7,9 +7,12 @@ A collaborative web application for language learning through video annotation. 
 - 📺 **YouTube Video Integration** - Embed and watch any YouTube video
 - 📍 **Point & Range Markers** - Mark specific moments or time ranges
 - 💬 **Text & Audio Posts** - Ask questions via text or voice recordings
+- 🎤 **Audio Level Monitoring** - Real-time feedback during recording with visual meter
+- 📊 **Audio Waveform Visualization** - Interactive 100-bar waveform with click-to-seek
 - 🔗 **Share Links** - Simple token-based sharing (creator & helper roles)
-- 📱 **Mobile Responsive** - Works on desktop and mobile devices
+- 📱 **Mobile Responsive** - Works on desktop and mobile devices with optimized UX
 - 🎯 **Timeline Visualization** - Visual timeline showing all markers and current playback position
+- 💬 **WhatsApp-Style Messaging** - Familiar message bubbles with dynamic input interface
 - 🔄 **Two Backend Options** - Choose between PHP/SQLite or Supabase
 
 ## Tech Stack
