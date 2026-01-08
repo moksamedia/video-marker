@@ -230,6 +230,7 @@ function handleTogglePlayPause() {
 }
 
 function getYouTubeId(url) {
+  if (!url) return ''
   const match = url.match(/[?&]v=([^&]+)/)
   return match ? match[1] : ''
 }
