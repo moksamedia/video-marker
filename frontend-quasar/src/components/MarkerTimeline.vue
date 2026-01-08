@@ -2,7 +2,23 @@
   <div class="marker-timeline">
     <q-card>
       <div>
-        <div class="timeline-container" ref="timelineRef" @click="handleTimelineClick">
+        <div
+          class="timeline-container"
+          ref="timelineRef"
+          @click="handleTimelineClick"
+          @mousemove="handleMouseMove"
+          @mouseenter="showTooltip = true"
+          @mouseleave="showTooltip = false"
+        >
+          <!-- Hover tooltip -->
+          <div
+            v-if="showTooltip"
+            class="timeline-tooltip"
+            :style="{ left: tooltipPosition.x + 'px' }"
+          >
+            {{ formatTime(tooltipTime) }}
+          </div>
+
           <!-- Current time indicator -->
           <div class="current-time-indicator" :style="{ left: currentTimePercent + '%' }"></div>
 
@@ -72,6 +88,9 @@ const props = defineProps({
 const emit = defineEmits(['markerClick', 'seek'])
 
 const timelineRef = ref(null)
+const showTooltip = ref(false)
+const tooltipPosition = ref({ x: 0 })
+const tooltipTime = ref(0)
 
 const pointMarkers = computed(() => {
   return props.markers.filter((m) => m.end_time === null)
@@ -107,6 +126,18 @@ function handleTimelineClick(event) {
   emit('seek', time)
 }
 
+function handleMouseMove(event) {
+  if (!timelineRef.value || !props.duration) return
+
+  const rect = timelineRef.value.getBoundingClientRect()
+  const mouseX = event.clientX - rect.left
+  const percent = Math.max(0, Math.min(1, mouseX / rect.width))
+  const time = percent * props.duration
+
+  tooltipPosition.value = { x: mouseX }
+  tooltipTime.value = time
+}
+
 function formatTime(seconds) {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
@@ -125,7 +156,23 @@ function isSelectedMarker(marker) {
   background: linear-gradient(to right, var(--q-primary) 0%, var(--q-secondary) 100%);
   border-radius: 4px;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.timeline-tooltip {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
 }
 
 .current-time-indicator {
