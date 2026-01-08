@@ -387,10 +387,6 @@ function seekBackward(seconds) {
   emit('seek', -seconds)
 }
 
-function seekForward(seconds) {
-  emit('seek', seconds)
-}
-
 async function slipMarker(seconds) {
   if (!props.marker) return
 
