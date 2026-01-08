@@ -69,15 +69,15 @@ The application supports two interchangeable backends using a **single unified f
 
 ### Backend Implementations
 
-#### PHP + SQLite Backend (`/api`)
-- **Database** (`/api/lib/db.php`): SQLite with auto-initialization
-- **Auth** (`/api/lib/auth.php`): Token validation
-- **API Endpoints**:
+#### PHP + SQLite Backend (`/server`)
+- **Database** (`/server/api/lib/db.php`): SQLite with auto-initialization
+- **Auth** (`/server/api/lib/auth.php`): Token validation
+- **API Endpoints** (`/server/api/endpoints/`):
   - `sessions.php` - Session management, YouTube oEmbed
   - `markers.php` - Marker CRUD with overlap validation
   - `posts.php` - Post creation with multipart audio
   - `audio.php` - Audio file serving
-- **Router** (`/router.php`): Dev server routing
+- **Router** (`/server/router.php`): Dev server routing
 
 #### Supabase Backend
 - **Schema** (`/supabase-schema.sql`): PostgreSQL tables, indexes, RLS policies
@@ -246,10 +246,13 @@ Single codebase that works with both backends via adapter pattern:
 ### Unified Architecture
 ```
 /video-markup
-├── api/                    # PHP backend
-│   ├── endpoints/          # API handlers
-│   ├── lib/                # Database, auth
-│   └── index.php           # Router
+├── server/                 # PHP backend
+│   ├── api/                # API endpoints
+│   │   ├── endpoints/      # API handlers
+│   │   ├── lib/            # Database, auth
+│   │   └── index.php       # Router
+│   ├── config.php          # PHP config
+│   └── router.php          # Dev server router
 ├── audio/                  # PHP uploaded files
 ├── frontend/               # UNIFIED frontend
 │   ├── src/
@@ -264,8 +267,6 @@ Single codebase that works with both backends via adapter pattern:
 │   ├── package.json
 │   ├── vite.config.js
 │   └── .env.example        # Backend selection
-├── config.php              # PHP config
-├── router.php              # Dev server router
 ├── database.sqlite         # Created on first run
 ├── supabase-schema.sql     # Supabase schema
 └── SUPABASE_SETUP.md       # Supabase setup guide
@@ -331,7 +332,7 @@ cp .env.example .env
 
 # 2. Terminal 1 - Backend
 cd ..
-php -S localhost:8000 router.php
+php -S localhost:8000 server/router.php
 
 # 3. Terminal 2 - Frontend
 cd frontend

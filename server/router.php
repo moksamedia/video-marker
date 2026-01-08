@@ -1,7 +1,8 @@
 <?php
 // Development router for PHP built-in server
-// Usage: php -S localhost:8000 router.php
+// Usage: php -S localhost:8000 server/router.php
 
+$projectRoot = dirname(__DIR__);
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Route API requests to api/index.php
@@ -11,9 +12,9 @@ if (preg_match('#^/api/#', $uri)) {
     exit;
 }
 
-// Serve audio files
+// Serve audio files (from project root)
 if (preg_match('#^/audio/(.+)$#', $uri, $matches)) {
-    $filepath = __DIR__ . '/audio/' . basename($matches[1]);
+    $filepath = $projectRoot . '/audio/' . basename($matches[1]);
     if (file_exists($filepath)) {
         header('Content-Type: audio/mpeg');
         header('Content-Length: ' . filesize($filepath));
@@ -25,14 +26,14 @@ if (preg_match('#^/audio/(.+)$#', $uri, $matches)) {
 }
 
 // Serve static files from frontend/dist (for production testing)
-if (file_exists(__DIR__ . '/frontend/dist' . $uri)) {
+if (file_exists($projectRoot . '/frontend/dist' . $uri)) {
     return false; // Let PHP serve the file
 }
 
 // For frontend development, return false to let Vite handle it
 // For production, serve index.html for all other routes
-if (file_exists(__DIR__ . '/frontend/dist/index.html') && !preg_match('/\.\w+$/', $uri)) {
-    require __DIR__ . '/frontend/dist/index.html';
+if (file_exists($projectRoot . '/frontend/dist/index.html') && !preg_match('/\.\w+$/', $uri)) {
+    require $projectRoot . '/frontend/dist/index.html';
     exit;
 }
 

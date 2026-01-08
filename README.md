@@ -90,7 +90,7 @@ npm install
 
 ```bash
 cd ..
-php -S localhost:8000 router.php
+php -S localhost:8000 server/router.php
 ```
 
 The PHP server will:
@@ -300,20 +300,21 @@ video-markup/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── api/                    # PHP backend
-│   ├── endpoints/
-│   │   ├── sessions.php    # Session CRUD
-│   │   ├── markers.php     # Marker CRUD
-│   │   ├── posts.php       # Post creation
-│   │   └── audio.php       # Audio serving
-│   ├── lib/
-│   │   ├── db.php          # SQLite database
-│   │   └── auth.php        # Token validation
-│   └── index.php           # API router
+├── server/                 # PHP backend
+│   ├── api/                # API endpoints
+│   │   ├── endpoints/
+│   │   │   ├── sessions.php    # Session CRUD
+│   │   │   ├── markers.php     # Marker CRUD
+│   │   │   ├── posts.php       # Post creation
+│   │   │   └── audio.php       # Audio serving
+│   │   ├── lib/
+│   │   │   ├── db.php          # SQLite database
+│   │   │   └── auth.php        # Token validation
+│   │   └── index.php           # API router
+│   ├── config.php          # PHP configuration
+│   └── router.php          # PHP dev server router
 │
 ├── audio/                  # PHP uploaded files (auto-created)
-├── config.php              # PHP configuration
-├── router.php              # PHP dev server router
 ├── database.sqlite         # SQLite database (auto-created)
 ├── supabase-schema.sql     # Supabase database schema
 ├── SUPABASE_SETUP.md       # Detailed Supabase guide
@@ -504,8 +505,8 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 **Fix**: Restart the PHP server
 ```bash
 pkill -f "php -S"
-cd /Users/andrew/Development/video-markup
-php -S localhost:8000 router.php
+cd /path/to/video-markup
+php -S localhost:8000 server/router.php
 ```
 
 ### Audio recording doesn't work
@@ -565,7 +566,7 @@ npm run preview      # Preview production build
 
 ```bash
 # Start PHP development server
-php -S localhost:8000 router.php
+php -S localhost:8000 server/router.php
 
 # Check PHP error logs
 tail -f /tmp/php-server.log

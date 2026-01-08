@@ -36,9 +36,11 @@ You need to upload these files/directories to your hosting:
 
 **Required Files:**
 ```
-/api/                    # Entire API directory
-/config.php              # Configuration file
-/.htaccess               # URL rewriting rules
+/server/                 # Entire server directory
+  ├── api/               # API endpoints
+  ├── config.php         # Configuration file
+  └── router.php         # Dev router (not needed for production)
+/.htaccess               # URL rewriting rules (create this)
 /frontend-quasar/dist/spa/  # Built frontend (will be renamed)
 ```
 
@@ -48,6 +50,7 @@ You need to upload these files/directories to your hosting:
 /frontend-quasar/node_modules/
 /frontend/               # Old frontend (if using Quasar)
 /frontend-supabase/      # Not needed for PHP backend
+/server/router.php       # Only for dev server, not needed on host
 /database.sqlite         # Will be auto-created
 /audio/                  # Will be auto-created
 .git/
@@ -69,11 +72,12 @@ public_html/
 ├── assets/              # From frontend-quasar/dist/spa/assets/
 ├── icons/               # From frontend-quasar/dist/spa/icons/
 ├── favicon.ico          # From frontend-quasar/dist/spa/
-├── api/                 # Your PHP backend
-│   ├── endpoints/
-│   ├── lib/
-│   └── index.php
-├── config.php
+├── server/              # Your PHP backend
+│   ├── api/
+│   │   ├── endpoints/
+│   │   ├── lib/
+│   │   └── index.php
+│   └── config.php
 └── .htaccess
 ```
 
@@ -93,9 +97,9 @@ Create or update `.htaccess` in your `public_html` root:
 RewriteEngine On
 RewriteBase /
 
-# API routes - send to api/index.php
+# API routes - send to server/api/index.php
 RewriteCond %{REQUEST_URI} ^/api/
-RewriteRule ^api/(.*)$ api/index.php/$1 [L,QSA]
+RewriteRule ^api/(.*)$ server/api/index.php/$1 [L,QSA]
 
 # Frontend routes - send everything else to index.html
 # But skip actual files/directories
@@ -140,14 +144,15 @@ Using cPanel File Manager or FTP client, set these permissions:
 ```
 Directories:
 - public_html/         → 755
-- public_html/api/     → 755
+- public_html/server/  → 755
+- public_html/server/api/ → 755
 - public_html/assets/  → 755
 
 Files:
 - .htaccess            → 644
-- config.php           → 644
+- server/config.php    → 644
 - index.html           → 644
-- api/index.php        → 644
+- server/api/index.php → 644
 
 Auto-created (will be created on first run):
 - database.sqlite      → 644 (or 666 if having write issues)
@@ -449,22 +454,23 @@ Regularly review PHP error logs:
 public_html/                      (your web root)
 ├── index.html                    (frontend entry point)
 ├── .htaccess                     (routing rules)
-├── config.php                    (configuration)
 ├── assets/                       (frontend assets)
 │   ├── *.js
 │   ├── *.css
 │   └── ...
 ├── icons/                        (app icons)
-├── api/                          (PHP backend)
-│   ├── index.php                 (API router)
-│   ├── endpoints/
-│   │   ├── sessions.php
-│   │   ├── markers.php
-│   │   ├── posts.php
-│   │   └── audio.php
-│   └── lib/
-│       ├── db.php
-│       └── auth.php
+├── server/                       (PHP backend)
+│   ├── config.php                (configuration)
+│   └── api/                      (API endpoints)
+│       ├── index.php             (API router)
+│       ├── endpoints/
+│       │   ├── sessions.php
+│       │   ├── markers.php
+│       │   ├── posts.php
+│       │   └── audio.php
+│       └── lib/
+│           ├── db.php
+│           └── auth.php
 ├── database.sqlite               (auto-created)
 └── audio/                        (auto-created, writable)
     └── *.mp3
