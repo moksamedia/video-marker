@@ -60,6 +60,40 @@
           />
         </q-btn-group>
 
+        <!-- Seek Backward Controls -->
+        <q-btn-group flat>
+          <q-btn
+            flat
+            dense
+            icon="replay_5"
+            @click="seekBackward(5)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Rewind 5s</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            dense
+            icon="replay_10"
+            @click="seekBackward(10)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Rewind 10s</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            dense
+            icon="replay_30"
+            @click="seekBackward(30)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Rewind 30s</q-tooltip>
+          </q-btn>
+        </q-btn-group>
+
         <q-btn
           color="negative"
           icon="delete"
@@ -229,6 +263,21 @@ function setPlaybackSpeed(speed) {
     message: `Playback speed set to ${speed}x`,
     icon: 'speed',
     timeout: 1000,
+  })
+}
+
+function seekBackward(seconds) {
+  if (!player.value) return
+
+  const currentTime = player.value.getCurrentTime()
+  const newTime = Math.max(0, currentTime - seconds)
+  player.value.seekTo(newTime, true)
+
+  $q.notify({
+    type: 'info',
+    message: `Rewound ${seconds}s`,
+    icon: 'replay',
+    timeout: 800,
   })
 }
 
