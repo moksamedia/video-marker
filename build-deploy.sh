@@ -14,6 +14,7 @@ FTP_REMOTE_DIR="/"
 # Parse command line arguments
 FTP_PASSWORD=""
 CLEAN_DEPLOY=false
+DEPLOY_TARGET="both"  # both, frontend, server
 while [[ $# -gt 0 ]]; do
   case $1 in
     -p)
@@ -30,9 +31,17 @@ while [[ $# -gt 0 ]]; do
       CLEAN_DEPLOY=true
       shift
       ;;
+    --frontend-only)
+      DEPLOY_TARGET="frontend"
+      shift
+      ;;
+    --server-only)
+      DEPLOY_TARGET="server"
+      shift
+      ;;
     *)
       echo "❌ Error: Unknown option: $1" >&2
-      echo "Usage: $0 [-p FTP_PASSWORD] [--clean]"
+      echo "Usage: $0 [-p FTP_PASSWORD] [--clean] [--frontend-only|--server-only]"
       exit 1
       ;;
   esac
@@ -237,10 +246,24 @@ if [ -n "$FTP_PASSWORD" ]; then
   echo "   Remote directory: $FTP_REMOTE_DIR"
   echo ""
 
-  # Exclude patterns to preserve server state (unless --clean is used)
+  # Build lftp options based on flags
   LFTP_EXCLUDE=""
+  LFTP_SOURCE="dist/"
+
+  # Handle deploy target (frontend-only, server-only, or both)
+  if [ "$DEPLOY_TARGET" = "frontend" ]; then
+    LFTP_EXCLUDE="$LFTP_EXCLUDE --exclude server/"
+    echo "📱 Frontend-only deployment (excluding server/)"
+  elif [ "$DEPLOY_TARGET" = "server" ]; then
+    LFTP_SOURCE="dist/server/"
+    echo "🖥️  Server-only deployment"
+  else
+    echo "📦 Full deployment (frontend + server)"
+  fi
+
+  # Preserve server state (unless --clean is used)
   if [ "$CLEAN_DEPLOY" = false ]; then
-    LFTP_EXCLUDE="--exclude database.sqlite --exclude audio/ --exclude server/database.sqlite --exclude server/audio/"
+    LFTP_EXCLUDE="$LFTP_EXCLUDE --exclude database.sqlite --exclude audio/ --exclude server/database.sqlite --exclude server/audio/"
     echo "⚠️  Preserving server state (database.sqlite, audio/)"
     echo "   Use --clean flag to delete and start fresh"
   else
@@ -248,14 +271,21 @@ if [ -n "$FTP_PASSWORD" ]; then
   fi
   echo ""
 
+  # Determine FTP target path
+  if [ "$DEPLOY_TARGET" = "server" ]; then
+    FTP_TARGET_DIR="$FTP_REMOTE_DIR/server"
+  else
+    FTP_TARGET_DIR="$FTP_REMOTE_DIR"
+  fi
+
   # Check if lftp is available (better for recursive uploads)
   if command -v lftp &> /dev/null; then
     echo "Using lftp for deployment..."
     lftp -c "
       set ssl:verify-certificate no;
       open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_HOST;
-      cd $FTP_REMOTE_DIR;
-      mirror -R --verbose $LFTP_EXCLUDE dist/ ./;
+      cd $FTP_TARGET_DIR;
+      mirror -R --verbose $LFTP_EXCLUDE $LFTP_SOURCE ./;
       quit
     "
 
@@ -311,8 +341,12 @@ else
   echo "💡 To build for a different domain, run:"
   echo "   DEPLOY_DOMAIN=yourdomain.com ./build-deploy.sh"
   echo ""
-  echo "💡 To build AND deploy via FTP, run:"
+  echo "💡 To build AND deploy via FTP:"
   echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD"
+  echo ""
+  echo "💡 To deploy only frontend or server:"
+  echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD --frontend-only"
+  echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD --server-only"
   echo ""
   echo "💡 To deploy and overwrite database/audio (fresh start):"
   echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD --clean"
