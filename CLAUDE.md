@@ -8,7 +8,7 @@ A web application for collaborative language learning through video annotation. 
 
 **Date Created**: January 4, 2026
 
-**Last Updated**: January 8, 2026
+**Last Updated**: January 8, 2026 - Deployment & Android Mobile Fix
 
 ---
 
@@ -1204,6 +1204,140 @@ b4a236b Update CLAUDE.md with Enhancement #2
 - **Quasar frontend** (`/frontend-quasar`): PHP backend only, enhanced UI/UX with modern messaging interface, real-time audio feedback
 
 **Ready For**: Production deployment, iOS testing, Supabase migration for Quasar
+
+---
+
+## Deployment Infrastructure (January 8, 2026)
+
+### Deployment Scripts Created
+
+Two comprehensive deployment scripts for flexible hosting options:
+
+#### 1. build-deploy.sh (FTP only)
+- Configurable `DEPLOY_DOMAIN` variable
+- Optional FTP deployment with `-p password` flag
+- Uses lftp for recursive uploads (with basic ftp fallback)
+- Default domain: `videomark.learntibetanlanguage.org`
+
+#### 2. build-deploy-rsync.sh (rsync + FTP)
+**Primary deployment method with multiple options:**
+
+**Deployment Methods:**
+- **rsync via SSH** (`-r` flag) - Fast delta sync, recommended
+- **FTP via lftp** (`-p` flag) - Fallback for basic hosting
+
+**FastComet Server Configuration:**
+- Host: `moksamedia.com`
+- Port: `17177`
+- User: `moksamed`
+- Remote path: `/home/moksamed/$DEPLOY_DOMAIN`
+- Supports SSH key authentication (no password required)
+
+**Key Features:**
+
+**1. State Preservation (Default)**
+- Excludes `database.sqlite` and `audio/` from deployment
+- Prevents overwriting production data on each deploy
+- Use `--clean` flag to override and start fresh
+
+**2. SSH Key Authentication**
+- Supports passwordless SSH key auth
+- Use: `./build-deploy-rsync.sh -r` (no password)
+- Falls back to password auth if password provided with `-r`
+
+**3. Selective Deployment**
+- `--frontend-only`: Deploy only UI changes (faster)
+- `--server-only`: Deploy only backend changes (faster)
+- Default: Deploy both frontend and server
+
+**Usage Examples:**
+```bash
+# Standard deployment (preserves database/audio, uses SSH key)
+./build-deploy-rsync.sh -r
+
+# Deploy only frontend changes
+./build-deploy-rsync.sh -r --frontend-only
+
+# Deploy only server changes
+./build-deploy-rsync.sh -r --server-only
+
+# Fresh start (overwrite everything)
+./build-deploy-rsync.sh -r --clean
+
+# Combine flags
+./build-deploy-rsync.sh -r --frontend-only --clean
+
+# Use password authentication instead of SSH key
+./build-deploy-rsync.sh -r YOUR_SSH_PASSWORD
+
+# FTP deployment (fallback)
+./build-deploy-rsync.sh -p YOUR_FTP_PASSWORD
+```
+
+**Build Process:**
+1. Clean previous build (`dist/` directory)
+2. Build Quasar frontend (`npm install && npm run build`)
+3. Copy frontend files to `dist/`
+4. Copy server files (PHP backend + config)
+5. Generate `.htaccess` with routing rules
+6. Create deployment instructions
+7. Deploy via rsync or FTP (if password provided)
+
+**Commits:**
+- `d6d3bfe` - Add deployment scripts with FTP and rsync options
+- `bc9677b` - Support SSH key authentication in rsync deployment
+- `0f6dcfe` - Add state preservation and selective deployment options
+- `b7bf445` - Add selective deployment to build-deploy.sh
+
+---
+
+## Android Mobile Fix (January 8, 2026)
+
+### Issue 7: "Failed to refresh session" on Android after posting
+
+**Problem**:
+When adding a post on Android phones, the app would display "failed to refresh session" error and attempt to reload the page. This only occurred on Android devices, not desktop browsers.
+
+**Root Cause**:
+Android browsers can temporarily lose access to URL query parameters (`route.query.token`) during certain mobile interactions, especially with keyboards and forms. When the post was created successfully, the app would try to refresh the session data, but the token would be unavailable, causing the API call to fail.
+
+**Solution**:
+Store the token in a Vue ref when the page loads, and use the stored token for all subsequent API calls instead of reading from `route.query.token` each time.
+
+**Implementation**:
+1. **Session pages** (Creator & Helper): Added `sessionToken` ref to store token on mount
+2. **All API calls**: Updated to use `sessionToken.value` instead of `route.query.token`
+3. **ThreadPanel component**: Now receives token as a prop from parent pages
+
+**Files Modified:**
+- `frontend-quasar/src/pages/CreatorSessionPage.vue`
+- `frontend-quasar/src/pages/HelperSessionPage.vue`
+- `frontend-quasar/src/components/ThreadPanel.vue`
+
+**Code Changes:**
+```javascript
+// Store token on page load
+const sessionToken = ref(null)
+
+async function loadSession() {
+  const token = route.query.token
+  sessionToken.value = token  // Store for later use
+  // ... rest of load logic
+}
+
+// Use stored token for all API calls
+async function refreshSession() {
+  const sessionData = await apiService.getSession(
+    route.params.id,
+    sessionToken.value  // Use stored token
+  )
+}
+```
+
+**Commit:**
+- `5adc2a5` - Fix Android refresh session error after posting
+
+**Status**: ✅ Fixed, ready for Android testing
 
 ---
 

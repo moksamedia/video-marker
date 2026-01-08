@@ -444,28 +444,103 @@ All authenticated endpoints require `?token={token}` query parameter.
 
 ## Deployment
 
-### Deploying PHP Backend
+### Automated Deployment Scripts (Recommended)
+
+Two deployment scripts are provided for easy deployment to your hosting:
+
+#### Option 1: build-deploy-rsync.sh (Recommended)
+**Fast deployment with rsync + SSH or FTP fallback**
+
+**Features:**
+- ✅ rsync via SSH (10-100x faster than FTP)
+- ✅ SSH key authentication (no password required)
+- ✅ State preservation (doesn't overwrite database/audio by default)
+- ✅ Selective deployment (frontend-only or server-only)
+- ✅ FTP fallback option
+
+**Quick Start:**
+```bash
+# Standard deployment (SSH key auth, preserves data)
+./build-deploy-rsync.sh -r
+
+# Deploy only frontend changes (faster)
+./build-deploy-rsync.sh -r --frontend-only
+
+# Deploy only backend changes (faster)
+./build-deploy-rsync.sh -r --server-only
+
+# Fresh start (overwrite everything)
+./build-deploy-rsync.sh -r --clean
+```
+
+**Configuration (already set for videomark.learntibetanlanguage.org):**
+- Host: `moksamedia.com:17177`
+- User: `moksamed`
+- Remote path: `/home/moksamed/videomark.learntibetanlanguage.org`
+
+**Custom Domain:**
+```bash
+DEPLOY_DOMAIN=yourdomain.com ./build-deploy-rsync.sh -r
+```
+
+#### Option 2: build-deploy.sh (FTP Only)
+**Simpler FTP-only deployment**
+
+```bash
+# Build and deploy via FTP
+./build-deploy.sh -p YOUR_FTP_PASSWORD
+
+# With state preservation flags
+./build-deploy.sh -p PASSWORD --frontend-only
+./build-deploy.sh -p PASSWORD --clean
+```
+
+**What These Scripts Do:**
+1. Build Quasar frontend (`npm install && npm run build`)
+2. Copy server files (PHP backend + config)
+3. Generate `.htaccess` with routing rules
+4. Create deployment instructions
+5. Deploy via rsync or FTP (with optional exclusions)
+
+**State Preservation (Default):**
+- Database (`database.sqlite`) is preserved
+- Audio files (`audio/`) are preserved
+- Use `--clean` flag to override and start fresh
+
+---
+
+### Manual Deployment (Alternative)
+
+If you prefer manual deployment:
 
 **Option A: Shared Hosting (Apache)**
 
-1. Upload all files to your hosting directory
-2. Ensure `.htaccess` is present (already included)
-3. Ensure PHP 8+ is enabled
-4. Set permissions:
+1. Build frontend:
+```bash
+cd frontend-quasar
+npm install
+npm run build
+```
+
+2. Upload files:
+   - Upload `dist/` contents to your web root
+   - Upload `server/` directory
+   - Upload `.htaccess`
+
+3. Set permissions:
 ```bash
 chmod 755 audio
 chmod 644 database.sqlite  # After first run
 ```
-5. The app will be available at your domain
 
 **Option B: VPS (Nginx)**
 
 1. Install PHP 8+ and enable required extensions
 2. Configure Nginx to proxy `/api/*` to PHP
-3. Point document root to `frontend/dist/` (after building)
+3. Point document root to built frontend
 4. Set proper permissions for `audio/` and database
 
-**Environment**: Production deployment automatically uses built frontend from `frontend/dist/`
+**Environment**: Production deployment automatically uses built frontend from `frontend-quasar/dist/spa/`
 
 ### Deploying Supabase Frontend
 
