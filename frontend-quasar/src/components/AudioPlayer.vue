@@ -50,7 +50,7 @@ const waveformCanvas = ref(null)
 let sound = null
 let progressInterval = null
 let waveformData = []
-const BARS_COUNT = 50
+const BARS_COUNT = 100
 
 onMounted(() => {
   initSound()

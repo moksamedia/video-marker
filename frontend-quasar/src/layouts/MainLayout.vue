@@ -61,7 +61,11 @@
               @click="selectMarker(marker)"
             >
               <q-item-section avatar>
-                <q-avatar :color="marker.end_time ? 'orange' : 'blue'" text-color="white" :icon="marker.end_time ? 'timelapse' : 'bookmark'" />
+                <q-avatar
+                  :color="marker.end_time ? 'orange' : 'blue'"
+                  text-color="white"
+                  :icon="marker.end_time ? 'timelapse' : 'bookmark'"
+                />
               </q-item-section>
 
               <q-item-section>
@@ -105,7 +109,6 @@
             <q-item-label caption>View all annotation sessions</q-item-label>
           </q-item-section>
         </q-item>
-
       </q-list>
     </q-drawer>
 
@@ -118,10 +121,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
 import { useSessionStore } from 'src/stores/session-store'
 
 const route = useRoute()
+const $q = useQuasar()
 const sessionStore = useSessionStore()
 const { markers, selectedMarker } = storeToRefs(sessionStore)
 
@@ -136,7 +141,13 @@ function toggleLeftDrawer() {
 }
 
 function selectMarker(marker) {
+  console.log('Selecting marker')
   sessionStore.setSelectedMarker(marker)
+  console.log('Screen width:', $q.screen.width)
+  if ($q.screen.lt.md) {
+    leftDrawerOpen.value = false
+    console.log('Closing drawer')
+  }
 }
 
 function formatTime(seconds) {

@@ -48,6 +48,16 @@
           >
             <q-tooltip>Copy helper link</q-tooltip>
           </q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            icon="open_in_new"
+            @click="openHelperPage"
+            color="secondary"
+          >
+            <q-tooltip>Open helper page</q-tooltip>
+          </q-btn>
         </q-card-section>
       </q-card>
 
@@ -296,6 +306,10 @@ function copyHelperLink() {
     icon: 'content_copy',
     timeout: 1500,
   })
+}
+
+function openHelperPage() {
+  window.open(helperUrl.value, '_blank')
 }
 
 function handleKeyDown(event) {

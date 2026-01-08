@@ -19,6 +19,10 @@
           <div class="col">
             <div class="text-weight-medium">Recording...</div>
             <div class="text-caption">{{ formatDuration(recordingDuration) }} / 5:00</div>
+            <!-- Audio Level Meter -->
+            <div class="audio-level-bar">
+              <div class="audio-level-fill" :style="{ width: audioLevel + '%' }"></div>
+            </div>
           </div>
           <q-btn flat round color="positive" icon="check" @click="stopRecording">
             <q-tooltip>Done</q-tooltip>
@@ -90,10 +94,15 @@ const hasPermission = ref(false)
 const recordingDuration = ref(0)
 const recordingProgress = ref(0)
 const previewAudio = ref(null)
+const audioLevel = ref(0)
 
 let mediaRecorder = null
 let audioChunks = []
 let durationInterval = null
+let audioContext = null
+let analyser = null
+let microphone = null
+let animationId = null
 const MAX_DURATION = 300 // 5 minutes in seconds
 
 onMounted(async () => {
@@ -122,6 +131,7 @@ onBeforeUnmount(() => {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop()
   }
+  stopAudioLevelMonitoring()
 })
 
 async function startRecording() {
@@ -140,10 +150,14 @@ async function startRecording() {
       const webmBlob = new Blob(audioChunks, { type: 'audio/webm' })
       await encodeToMP3(webmBlob)
       stream.getTracks().forEach((track) => track.stop())
+      stopAudioLevelMonitoring()
     }
 
     mediaRecorder.start()
     isRecording.value = true
+
+    // Start audio level monitoring
+    startAudioLevelMonitoring(stream)
 
     // Track duration and auto-stop at 5 minutes
     durationInterval = setInterval(() => {
@@ -168,6 +182,63 @@ async function startRecording() {
   }
 }
 
+function startAudioLevelMonitoring(stream) {
+  try {
+    // Create audio context and analyser
+    audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    analyser = audioContext.createAnalyser()
+    microphone = audioContext.createMediaStreamSource(stream)
+
+    analyser.smoothingTimeConstant = 0.8
+    analyser.fftSize = 1024
+
+    microphone.connect(analyser)
+
+    // Process audio level
+    const array = new Uint8Array(analyser.frequencyBinCount)
+
+    const updateLevel = () => {
+      if (!isRecording.value) return
+
+      analyser.getByteFrequencyData(array)
+      const values = array.reduce((a, b) => a + b, 0)
+      const average = values / array.length
+      // Scale to 0-100
+      audioLevel.value = Math.min(100, Math.round(average * 1.5))
+
+      animationId = requestAnimationFrame(updateLevel)
+    }
+
+    updateLevel()
+  } catch (error) {
+    console.error('Failed to start audio level monitoring:', error)
+  }
+}
+
+function stopAudioLevelMonitoring() {
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+    animationId = null
+  }
+
+  if (microphone) {
+    microphone.disconnect()
+    microphone = null
+  }
+
+  if (analyser) {
+    analyser.disconnect()
+    analyser = null
+  }
+
+  if (audioContext) {
+    audioContext.close()
+    audioContext = null
+  }
+
+  audioLevel.value = 0
+}
+
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop()
@@ -190,6 +261,8 @@ function cancelRecording() {
       durationInterval = null
     }
   }
+
+  stopAudioLevelMonitoring()
 
   // Reset state and emit cancel
   audioBlob.value = null
@@ -297,5 +370,22 @@ function formatDuration(seconds) {
 <style scoped>
 audio {
   width: 100%;
+}
+
+.audio-level-bar {
+  width: 100%;
+  height: 16px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  margin-top: 8px;
+}
+
+.audio-level-fill {
+  height: 100%;
+  background: linear-gradient(to right, #4caf50, #8bc34a, #ffeb3b, #ff9800);
+  transition: width 0.1s ease-out;
+  border-radius: 7px;
 }
 </style>

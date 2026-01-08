@@ -12,9 +12,7 @@
           class="q-mr-sm"
         />
 
-        <q-toolbar-title>
-          Video Markup - Helper View
-        </q-toolbar-title>
+        <q-toolbar-title> Video Markup - Helper View </q-toolbar-title>
 
         <q-btn
           flat
@@ -50,7 +48,11 @@
               @click="selectMarker(marker)"
             >
               <q-item-section avatar>
-                <q-avatar :color="marker.end_time ? 'orange' : 'blue'" text-color="white" :icon="marker.end_time ? 'timelapse' : 'bookmark'" />
+                <q-avatar
+                  :color="marker.end_time ? 'orange' : 'blue'"
+                  text-color="white"
+                  :icon="marker.end_time ? 'timelapse' : 'bookmark'"
+                />
               </q-item-section>
 
               <q-item-section>
@@ -82,6 +84,9 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSessionStore } from 'src/stores/session-store'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const sessionStore = useSessionStore()
 const { markers, selectedMarker } = storeToRefs(sessionStore)
@@ -93,7 +98,13 @@ function toggleLeftDrawer() {
 }
 
 function selectMarker(marker) {
+  console.log('Selecting marker')
   sessionStore.setSelectedMarker(marker)
+  console.log('Screen width:', $q.screen.width)
+  if ($q.screen.lt.md) {
+    leftDrawerOpen.value = false
+    console.log('Closing drawer')
+  }
 }
 
 function formatTime(seconds) {

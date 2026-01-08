@@ -10,7 +10,6 @@
             <q-tooltip>Seek backward 5s</q-tooltip>
           </q-btn>
           <!-- Marker time (clickable to play from marker) -->
-          <q-label class="text-subtitle2"> </q-label>
           <q-btn @click="playFromMarker">
             <q-icon :name="marker.end_time ? 'schedule' : 'place'" class="q-mr-xs" />
             {{ formatTime(marker.start_time) }}
@@ -35,13 +34,14 @@
       <div v-if="marker.posts && marker.posts.length > 0" class="posts-section">
         <div v-for="post in marker.posts" :key="post.id" class="post-item">
           <div
-            class="post-content"
+            class="post-wrapper"
             :class="{
-              'helper-post': post.author_type === 'helper',
-              'creator-post-in-helper': post.author_type === 'creator',
+              'own-message': post.author_type === role,
+              'other-message': post.author_type !== role,
+              'has-audio': post.audio_filename,
             }"
           >
-            <div class="post-body">
+            <div class="post-bubble" :class="{ 'has-audio': post.audio_filename }">
               <!-- Edit mode -->
               <div v-if="editingPostId === post.id">
                 <q-input
@@ -77,41 +77,49 @@
 
               <!-- View mode -->
               <div v-else>
-                <div v-if="post.text_content" class="post-text-content">
-                  {{ post.text_content }}
-                </div>
+                <div
+                  v-if="post.text_content"
+                  class="post-text-content"
+                  v-html="formatTextWithTibetan(post.text_content)"
+                ></div>
 
                 <div v-if="post.audio_filename">
                   <AudioPlayer :audio-url="getAudioUrl(post.audio_filename)" />
                 </div>
               </div>
-            </div>
 
-            <div v-if="canDeletePost(post) && editingPostId !== post.id" class="post-actions">
-              <q-btn
-                flat
-                round
-                color="primary"
-                icon="edit"
-                size="md"
-                @click="startEdit(post)"
-                v-if="post.text_content"
+              <!-- Action buttons -->
+              <div
+                v-if="canDeletePost(post) && editingPostId !== post.id"
+                class="post-actions-inline"
               >
-                <q-tooltip>Edit post</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                color="negative"
-                icon="delete"
-                size="md"
-                @click="confirmDeletePost(post)"
-              >
-                <q-tooltip>Delete post</q-tooltip>
-              </q-btn>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  color="primary"
+                  icon="edit"
+                  size="sm"
+                  @click="startEdit(post)"
+                  v-if="post.text_content"
+                >
+                  <q-tooltip>Edit post</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  color="negative"
+                  icon="delete"
+                  size="sm"
+                  @click="confirmDeletePost(post)"
+                >
+                  <q-tooltip>Delete post</q-tooltip>
+                </q-btn>
+              </div>
             </div>
+            <div class="post-date">{{ formatDate(post.created_at) }}</div>
           </div>
-          <div class="post-date">{{ formatDate(post.created_at) }}</div>
         </div>
       </div>
 
@@ -189,14 +197,17 @@
       <q-separator />
 
       <!-- Posts List -->
-      <q-list v-if="marker.posts && marker.posts.length > 0" separator>
-        <div v-for="post in marker.posts" :key="post.id">
-          <q-item
+      <div v-if="marker.posts && marker.posts.length > 0" class="posts-section">
+        <div v-for="post in marker.posts" :key="post.id" class="post-item">
+          <div
+            class="post-wrapper"
             :class="{
-              'helper-post': post.author_type === 'helper',
+              'own-message': post.author_type === role,
+              'other-message': post.author_type !== role,
+              'has-audio': post.audio_filename,
             }"
           >
-            <q-item-section>
+            <div class="post-bubble" :class="{ 'has-audio': post.audio_filename }">
               <!-- Edit mode -->
               <div v-if="editingPostId === post.id">
                 <q-input
@@ -232,24 +243,29 @@
 
               <!-- View mode -->
               <div v-else>
-                <q-item-label v-if="post.text_content" class="post-text-content">
-                  {{ post.text_content }}
-                </q-item-label>
+                <div
+                  v-if="post.text_content"
+                  class="post-text-content"
+                  v-html="formatTextWithTibetan(post.text_content)"
+                ></div>
 
                 <div v-if="post.audio_filename">
                   <AudioPlayer :audio-url="getAudioUrl(post.audio_filename)" />
                 </div>
               </div>
-            </q-item-section>
 
-            <q-item-section side v-if="canDeletePost(post) && editingPostId !== post.id">
-              <div class="row q-gutter-xs">
+              <!-- Action buttons -->
+              <div
+                v-if="canDeletePost(post) && editingPostId !== post.id"
+                class="post-actions-inline"
+              >
                 <q-btn
                   flat
                   round
+                  dense
                   color="primary"
                   icon="edit"
-                  size="md"
+                  size="sm"
                   @click="startEdit(post)"
                   v-if="post.text_content"
                 >
@@ -258,21 +274,20 @@
                 <q-btn
                   flat
                   round
+                  dense
                   color="negative"
                   icon="delete"
-                  size="md"
+                  size="sm"
                   @click="confirmDeletePost(post)"
                 >
                   <q-tooltip>Delete post</q-tooltip>
                 </q-btn>
               </div>
-            </q-item-section>
-          </q-item>
-          <q-item-label class="post-item-label post-date">
-            {{ formatDate(post.created_at) }}
-          </q-item-label>
+            </div>
+            <div class="post-date">{{ formatDate(post.created_at) }}</div>
+          </div>
         </div>
-      </q-list>
+      </div>
 
       <!-- Reply Area -->
       <q-card-section>
@@ -488,6 +503,26 @@ function formatDate(dateString) {
   }
 }
 
+function formatTextWithTibetan(text) {
+  if (!text) return ''
+
+  // Escape HTML to prevent XSS
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  // Wrap Tibetan text in spans (Tibetan Unicode range: U+0F00-U+0FFF)
+  escaped = escaped.replace(/([\u0F00-\u0FFF]+)/g, '<span class="tibetan-text">$1</span>')
+
+  // Convert line breaks to <br>
+  escaped = escaped.replace(/\n/g, '<br>')
+
+  return escaped
+}
+
 function getAudioUrl(filename) {
   return apiService.getAudioUrl(filename)
 }
@@ -602,7 +637,8 @@ async function saveEdit(post) {
 .posts-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  padding: 8px 0;
 }
 
 .post-item {
@@ -611,29 +647,57 @@ async function saveEdit(post) {
   gap: 4px;
 }
 
-.post-content {
+/* WhatsApp-style message bubbles */
+.post-wrapper {
   display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.post-wrapper.own-message {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.post-wrapper.other-message {
+  align-self: flex-start;
   align-items: flex-start;
-  gap: 12px;
-  padding: 0px;
-  border-radius: 4px;
 }
 
-.post-content.helper-post {
-  margin-left: 24px;
+.post-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  word-wrap: break-word;
 }
 
-.post-content.creator-post-in-helper {
-  background-color: #e3f2fd;
+.post-bubble.has-audio {
+  width: 100%;
 }
 
-.post-body {
-  flex: 1;
+.post-wrapper.has-audio {
+  max-width: 100%;
+  min-width: 85%;
 }
 
-.post-actions {
+.own-message .post-bubble {
+  background-color: #dcf8c6;
+  border-bottom-right-radius: 2px;
+}
+
+.other-message .post-bubble {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-bottom-left-radius: 2px;
+}
+
+.post-actions-inline {
   display: flex;
   gap: 4px;
+  margin-top: 8px;
+  justify-content: flex-end;
 }
 
 .reply-section {
@@ -641,19 +705,10 @@ async function saveEdit(post) {
   margin-bottom: 20px;
 }
 
-/* Creator view - keep existing q-item styles */
-.post-item-label {
-  text-align: right;
-}
-
 .post-date {
-  margin: 0px 5px;
-  color: gray;
-  text-align: right;
-}
-
-.helper-post {
-  margin-left: 24px;
+  font-size: 0.75rem;
+  color: #888;
+  margin: 2px 8px;
 }
 
 /* Post text styling - larger font */
@@ -689,5 +744,12 @@ async function saveEdit(post) {
 
 .whatsapp-input .action-btn {
   flex-shrink: 0;
+}
+</style>
+<style>
+/* Tibetan text - even larger font */
+.post-text-content .tibetan-text {
+  font-size: 2.2rem;
+  line-height: 1.6;
 }
 </style>
