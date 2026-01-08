@@ -39,6 +39,22 @@ class SessionsEndpoint {
             return ['error' => 'youtube_url is required'];
         }
 
+        if (!isset($data['session_name']) || trim($data['session_name']) === '') {
+            http_response_code(400);
+            return ['error' => 'session_name is required'];
+        }
+
+        // Convert session name to URL-safe slug
+        $sessionId = $this->generateSlug($data['session_name']);
+
+        // Check if session ID already exists
+        $stmt = $this->pdo->prepare('SELECT id FROM sessions WHERE id = ?');
+        $stmt->execute([$sessionId]);
+        if ($stmt->fetch()) {
+            http_response_code(409);
+            return ['error' => 'A session with this name already exists. Please choose a different name.'];
+        }
+
         // Fetch YouTube video metadata
         $oembedUrl = 'https://www.youtube.com/oembed?url=' . urlencode($data['youtube_url']) . '&format=json';
         $metadata = @file_get_contents($oembedUrl);
@@ -50,8 +66,7 @@ class SessionsEndpoint {
 
         $metadata = json_decode($metadata, true);
 
-        // Generate tokens and ID
-        $sessionId = $this->auth->generateSessionId();
+        // Generate tokens
         $creatorToken = $this->auth->generateToken();
         $helperToken = $this->auth->generateToken();
 
@@ -78,6 +93,25 @@ class SessionsEndpoint {
             'youtube_title' => $metadata['title'] ?? null,
             'youtube_thumbnail' => $metadata['thumbnail_url'] ?? null
         ];
+    }
+
+    private function generateSlug($name) {
+        // Convert to lowercase
+        $slug = strtolower(trim($name));
+
+        // Remove special characters, keep alphanumeric and spaces
+        $slug = preg_replace('/[^\w\s-]/', '', $slug);
+
+        // Replace spaces with hyphens
+        $slug = preg_replace('/\s+/', '-', $slug);
+
+        // Replace multiple hyphens with single
+        $slug = preg_replace('/-+/', '-', $slug);
+
+        // Remove leading/trailing hyphens
+        $slug = trim($slug, '-');
+
+        return $slug;
     }
 
     private function getSession($path, $params) {

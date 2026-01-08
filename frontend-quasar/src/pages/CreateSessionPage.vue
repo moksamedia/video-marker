@@ -12,6 +12,31 @@
         <q-card-section>
           <q-form @submit="createSession">
             <q-input
+              v-model="sessionName"
+              outlined
+              label="Session Name"
+              placeholder="My Tibetan Lesson"
+              :disable="isLoading"
+              :rules="[
+                (val) => !!val || 'Session name is required',
+                (val) => val.length >= 3 || 'Name must be at least 3 characters',
+                (val) => val.length <= 50 || 'Name must be less than 50 characters'
+              ]"
+              lazy-rules
+              class="q-mb-md"
+              hint="This will be used in the URL (e.g. my-tibetan-lesson)"
+            >
+              <template v-slot:prepend>
+                <q-icon name="label" />
+              </template>
+              <template v-slot:append v-if="sessionName">
+                <q-chip dense size="sm" color="grey-3">
+                  {{ slugPreview }}
+                </q-chip>
+              </template>
+            </q-input>
+
+            <q-input
               v-model="youtubeUrl"
               outlined
               label="YouTube URL"
@@ -30,7 +55,7 @@
               type="submit"
               color="primary"
               :loading="isLoading"
-              :disable="!youtubeUrl"
+              :disable="!youtubeUrl || !sessionName"
               class="full-width q-mt-md"
               size="lg"
             >
@@ -133,10 +158,23 @@ import { apiService } from 'src/services/api'
 const router = useRouter()
 const $q = useQuasar()
 
+const sessionName = ref('')
 const youtubeUrl = ref('')
 const isLoading = ref(false)
 const error = ref(null)
 const sessionData = ref(null)
+
+// Generate URL slug preview
+const slugPreview = computed(() => {
+  if (!sessionName.value) return ''
+  return sessionName.value
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/--+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+})
 
 const creatorUrl = computed(() => {
   if (!sessionData.value) return ''
@@ -155,7 +193,7 @@ async function createSession() {
   error.value = null
 
   try {
-    sessionData.value = await apiService.createSession(youtubeUrl.value)
+    sessionData.value = await apiService.createSession(youtubeUrl.value, slugPreview.value)
     $q.notify({
       type: 'positive',
       message: 'Session created successfully!',
