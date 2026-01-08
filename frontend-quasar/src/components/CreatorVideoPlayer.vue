@@ -32,6 +32,34 @@
 
         <q-space />
 
+        <!-- Playback Speed Controls -->
+        <q-btn-group outline>
+          <q-btn
+            :outline="playbackSpeed !== 1"
+            :color="playbackSpeed === 1 ? 'primary' : 'grey-7'"
+            label="1x"
+            @click="setPlaybackSpeed(1)"
+            :disable="!player"
+            size="sm"
+          />
+          <q-btn
+            :outline="playbackSpeed !== 0.85"
+            :color="playbackSpeed === 0.85 ? 'primary' : 'grey-7'"
+            label="0.85x"
+            @click="setPlaybackSpeed(0.85)"
+            :disable="!player"
+            size="sm"
+          />
+          <q-btn
+            :outline="playbackSpeed !== 0.7"
+            :color="playbackSpeed === 0.7 ? 'primary' : 'grey-7'"
+            label="0.7x"
+            @click="setPlaybackSpeed(0.7)"
+            :disable="!player"
+            size="sm"
+          />
+        </q-btn-group>
+
         <q-btn
           color="negative"
           icon="delete"
@@ -71,6 +99,7 @@ const playerEl = ref(null)
 const player = ref(null)
 const currentTime = ref(0)
 const rangeStart = ref(null)
+const playbackSpeed = ref(1)
 
 let pollInterval = null
 
@@ -187,6 +216,20 @@ function endRange() {
     icon: 'schedule',
   })
   rangeStart.value = null
+}
+
+function setPlaybackSpeed(speed) {
+  if (!player.value) return
+
+  player.value.setPlaybackRate(speed)
+  playbackSpeed.value = speed
+
+  $q.notify({
+    type: 'info',
+    message: `Playback speed set to ${speed}x`,
+    icon: 'speed',
+    timeout: 1000,
+  })
 }
 
 function confirmDeleteSession() {
