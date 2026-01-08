@@ -22,21 +22,36 @@ FTP_REMOTE_DIR="/"
 # Parse command line arguments
 DEPLOY_METHOD=""
 DEPLOY_PASSWORD=""
-while getopts "r:p:h" opt; do
-  case $opt in
-    r)
+
+# Manual parsing to support optional password for -r
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -r)
       DEPLOY_METHOD="rsync"
-      DEPLOY_PASSWORD="$OPTARG"
+      # Check if next argument exists and doesn't start with -
+      if [[ -n "$2" && "$2" != -* ]]; then
+        DEPLOY_PASSWORD="$2"
+        shift
+      fi
+      shift
       ;;
-    p)
+    -p)
       DEPLOY_METHOD="ftp"
-      DEPLOY_PASSWORD="$OPTARG"
+      if [[ -n "$2" && "$2" != -* ]]; then
+        DEPLOY_PASSWORD="$2"
+        shift
+      else
+        echo "❌ Error: -p requires a password argument" >&2
+        exit 1
+      fi
+      shift
       ;;
-    h)
+    -h)
       echo "Usage: $0 [options]"
       echo ""
       echo "Options:"
-      echo "  -r PASSWORD    Deploy via rsync/SSH (fast, recommended)"
+      echo "  -r [PASSWORD]  Deploy via rsync/SSH (fast, recommended)"
+      echo "                 Password optional if using SSH key authentication"
       echo "  -p PASSWORD    Deploy via FTP (slower, for basic hosting)"
       echo "  -h             Show this help"
       echo ""
@@ -52,18 +67,21 @@ while getopts "r:p:h" opt; do
       echo "  # Build only:"
       echo "  ./build-deploy-rsync.sh"
       echo ""
-      echo "  # Build and deploy via rsync (fast):"
+      echo "  # Build and deploy via rsync with SSH key (recommended):"
+      echo "  ./build-deploy-rsync.sh -r"
+      echo ""
+      echo "  # Build and deploy via rsync with password:"
       echo "  ./build-deploy-rsync.sh -r YOUR_SSH_PASSWORD"
       echo ""
-      echo "  # Build and deploy via FTP (slower):"
+      echo "  # Build and deploy via FTP:"
       echo "  ./build-deploy-rsync.sh -p YOUR_FTP_PASSWORD"
       echo ""
       echo "  # Custom domain:"
-      echo "  DEPLOY_DOMAIN=example.com ./build-deploy-rsync.sh -r PASSWORD"
+      echo "  DEPLOY_DOMAIN=example.com ./build-deploy-rsync.sh -r"
       exit 0
       ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
+    *)
+      echo "❌ Error: Unknown option: $1" >&2
       echo "Use -h for help"
       exit 1
       ;;
@@ -273,30 +291,36 @@ if [ "$DEPLOY_METHOD" = "rsync" ]; then
   echo "   Remote directory: $SSH_REMOTE_DIR"
   echo ""
 
-  # Check if sshpass is available (for password auth)
-  if command -v sshpass &> /dev/null; then
-    echo "Using rsync with password authentication..."
-    sshpass -p "$DEPLOY_PASSWORD" rsync -avz --delete \
-      -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
-      dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
-
-    if [ $? -eq 0 ]; then
-      echo ""
-      echo "✅ Deployment successful!"
-      echo "🌐 Your app should now be live at: https://$DEPLOY_DOMAIN"
+  # Check if password was provided
+  if [ -n "$DEPLOY_PASSWORD" ]; then
+    # Password provided - use sshpass
+    if command -v sshpass &> /dev/null; then
+      echo "Using rsync with password authentication..."
+      sshpass -p "$DEPLOY_PASSWORD" rsync -avz --delete \
+        -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+        dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
     else
-      echo ""
-      echo "❌ Rsync deployment failed!"
+      echo "❌ Password provided but sshpass not found."
+      echo "   Install sshpass for password-based authentication:"
+      echo "   macOS: brew install hudochenkov/sshpass/sshpass"
+      echo "   Linux: apt-get install sshpass or yum install sshpass"
       exit 1
     fi
   else
-    echo "⚠️  sshpass not found. Install it for password-based rsync:"
-    echo "   macOS: brew install hudochenkov/sshpass/sshpass"
-    echo "   Linux: apt-get install sshpass or yum install sshpass"
+    # No password - use SSH key authentication
+    echo "Using rsync with SSH key authentication..."
+    rsync -avz --delete \
+      -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+      dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
+  fi
+
+  if [ $? -eq 0 ]; then
     echo ""
-    echo "Or use SSH key authentication (recommended):"
-    echo "   rsync -avz --delete -e 'ssh -p $SSH_PORT' dist/ $SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
+    echo "✅ Deployment successful!"
+    echo "🌐 Your app should now be live at: https://$DEPLOY_DOMAIN"
+  else
     echo ""
+    echo "❌ Rsync deployment failed!"
     exit 1
   fi
 
@@ -370,7 +394,10 @@ else
   echo ""
   echo "💡 Quick deployment options:"
   echo ""
-  echo "   rsync (fast, recommended if you have SSH access):"
+  echo "   rsync with SSH key (fast, recommended):"
+  echo "   ./build-deploy-rsync.sh -r"
+  echo ""
+  echo "   rsync with password:"
   echo "   ./build-deploy-rsync.sh -r YOUR_SSH_PASSWORD"
   echo ""
   echo "   FTP (slower, works on basic shared hosting):"
