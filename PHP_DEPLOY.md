@@ -16,7 +16,30 @@ This guide explains how to deploy the Video Markup app to a typical shared hosti
 
 ---
 
-## Deployment Steps
+## Quick Start: Automated Build
+
+**Easiest method:** Use the provided build script to create a deployment-ready package:
+
+```bash
+./build-deploy.sh
+```
+
+This script will:
+- Build the Quasar frontend
+- Copy all necessary files to `./dist/`
+- Generate `.htaccess` with optimized settings
+- Create deployment instructions
+
+Then simply:
+1. Edit `dist/server/config.php` with your domain
+2. Upload `dist/*` to your web host
+3. Set file permissions as instructed
+
+**Want to build manually?** Continue with the detailed steps below.
+
+---
+
+## Deployment Steps (Manual)
 
 ### 1. Build the Frontend
 
