@@ -180,6 +180,9 @@ export const apiService = {
    * @returns {string} Full URL to the audio file
    */
   getAudioUrl(filename) {
-    return `http://localhost:8000/api/audio/${filename}`
+    const baseUrl = import.meta.env.PROD
+      ? '/api'  // Production: relative path
+      : 'http://localhost:8000/api'  // Development: local server
+    return `${baseUrl}/audio/${filename}`
   },
 }

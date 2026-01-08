@@ -3,7 +3,9 @@ import axios from 'axios'
 
 // API instance configured for the PHP backend
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.PROD
+    ? '/api'  // Production: relative to domain root (works with any domain/subdomain)
+    : 'http://localhost:8000/api',  // Development: local PHP server
   headers: {
     'Content-Type': 'application/json',
   },
