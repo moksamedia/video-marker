@@ -3,10 +3,16 @@
 # Video Markup - Build for Deployment
 # This script creates a production-ready build in the /dist directory
 
+# ============================================
+# Configuration
+# ============================================
+DEPLOY_DOMAIN="${DEPLOY_DOMAIN:-videomark.learntibetanlanguage.org}"
+
 set -e  # Exit on error
 
 echo "🚀 Video Markup - Building for Deployment"
 echo "=========================================="
+echo "Target domain: $DEPLOY_DOMAIN"
 echo ""
 
 # Get script directory
@@ -87,15 +93,17 @@ HTACCESS
 
 # Create deployment instructions
 echo "📝 Creating deployment instructions..."
-cat > dist/DEPLOY_INSTRUCTIONS.txt << 'INSTRUCTIONS'
+cat > dist/DEPLOY_INSTRUCTIONS.txt << INSTRUCTIONS
 ==============================================
 Video Markup - Deployment Instructions
 ==============================================
 
+Target Domain: $DEPLOY_DOMAIN
+
 BEFORE UPLOADING:
 
 1. Edit server/config.php:
-   - Set BASE_URL to your domain (e.g., 'https://yourdomain.com/')
+   - Set BASE_URL to 'https://$DEPLOY_DOMAIN/'
    - Set ALLOWED_ORIGINS if needed
 
 2. Review .htaccess:
@@ -136,10 +144,10 @@ Auto-created (on first run):
 
 VERIFY DEPLOYMENT:
 
-1. Visit: https://yourdomain.com
+1. Visit: https://$DEPLOY_DOMAIN
    Should see the home page
 
-2. Test API: https://yourdomain.com/api/sessions
+2. Test API: https://$DEPLOY_DOMAIN/api/sessions
    Should return [] or JSON response
 
 3. Create a test session to verify everything works
@@ -188,11 +196,15 @@ echo ""
 echo "✅ Build complete!"
 echo ""
 echo "📁 Deployment files are in: ./dist"
+echo "🌐 Target domain: $DEPLOY_DOMAIN"
 echo ""
 echo "Next steps:"
-echo "  1. Edit dist/server/config.php with your domain"
+echo "  1. Edit dist/server/config.php and set BASE_URL to 'https://$DEPLOY_DOMAIN/'"
 echo "  2. Read dist/DEPLOY_INSTRUCTIONS.txt"
 echo "  3. Upload dist/* to your web host"
 echo ""
 echo "For detailed instructions, see PHP_DEPLOY.md"
+echo ""
+echo "💡 To build for a different domain, run:"
+echo "   DEPLOY_DOMAIN=yourdomain.com ./build-deploy.sh"
 echo ""
