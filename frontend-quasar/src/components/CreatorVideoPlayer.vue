@@ -12,13 +12,14 @@
           :disable="!player"
         />
 
+        <!--
         <q-btn
           v-if="!rangeStart"
           color="secondary"
           icon="play_arrow"
           label="Start Range"
           @click="startRange"
-          :disable="!player"
+          :disable="true"
         />
 
         <q-btn
@@ -29,8 +30,22 @@
           @click="endRange"
           :disable="!player"
         />
+        -->
 
         <q-space />
+
+        <!-- Seek Backward Controls -->
+        <q-btn-group flat>
+          <q-btn icon="replay_5" @click="seekBackward(5)" :disable="!player" size="lg">
+            <q-tooltip>Rewind 5s</q-tooltip>
+          </q-btn>
+          <q-btn icon="replay_10" @click="seekBackward(10)" :disable="!player" size="lg">
+            <q-tooltip>Rewind 10s</q-tooltip>
+          </q-btn>
+          <q-btn icon="replay_30" @click="seekBackward(30)" :disable="!player" size="lg">
+            <q-tooltip>Rewind 30s</q-tooltip>
+          </q-btn>
+        </q-btn-group>
 
         <!-- Playback Speed Controls -->
         <q-btn-group outline>
@@ -58,40 +73,6 @@
             :disable="!player"
             size="sm"
           />
-        </q-btn-group>
-
-        <!-- Seek Backward Controls -->
-        <q-btn-group flat>
-          <q-btn
-            flat
-            dense
-            icon="replay_5"
-            @click="seekBackward(5)"
-            :disable="!player"
-            size="sm"
-          >
-            <q-tooltip>Rewind 5s</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            dense
-            icon="replay_10"
-            @click="seekBackward(10)"
-            :disable="!player"
-            size="sm"
-          >
-            <q-tooltip>Rewind 10s</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            dense
-            icon="replay_30"
-            @click="seekBackward(30)"
-            :disable="!player"
-            size="sm"
-          >
-            <q-tooltip>Rewind 30s</q-tooltip>
-          </q-btn>
         </q-btn-group>
 
         <q-btn
@@ -223,11 +204,13 @@ function createPointMarker() {
   })
 }
 
+// eslint-disable-next-line no-unused-vars
 function startRange() {
   if (!player.value) return
   rangeStart.value = player.value.getCurrentTime()
 }
 
+// eslint-disable-next-line no-unused-vars
 function endRange() {
   if (!player.value || !rangeStart.value) return
 
