@@ -60,6 +60,7 @@ function initPlayer() {
     },
     events: {
       onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange,
     },
   })
 }
@@ -76,6 +77,16 @@ function onPlayerReady() {
       emit('currentTimeUpdate', currentTime.value)
     }
   }, 250)
+}
+
+function onPlayerStateChange(event) {
+  // When video ends (state 0), pause it to prevent "more videos" overlay
+  if (event.data === window.YT.PlayerState.ENDED) {
+    // Seek to last frame and pause
+    const duration = player.value.getDuration()
+    player.value.seekTo(duration - 0.1, true)
+    player.value.pauseVideo()
+  }
 }
 
 function seekToTime(time) {
