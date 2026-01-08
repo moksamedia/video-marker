@@ -162,13 +162,13 @@
         <!-- Controls -->
         <div class="row items-center justify-center q-gutter-xs">
           <div class="row items-center q-gutter-xs">
-            <!-- Seek backward 30s (desktop only) -->
-            <q-btn @click="seekBackward(30)" label="<< 30s" no-caps class="gt-xs">
-              <q-tooltip>Seek backward 30s</q-tooltip>
+            <!-- Slip marker backward 5s -->
+            <q-btn @click="slipMarker(-5)" label="-5s" no-caps color="secondary" outline>
+              <q-tooltip>Slip marker start time backward 5s</q-tooltip>
             </q-btn>
-            <!-- Seek backward 5s -->
-            <q-btn @click="seekBackward(5)" label="<< 5s" no-caps>
-              <q-tooltip>Seek backward 5s</q-tooltip>
+            <!-- Slip marker backward 1s -->
+            <q-btn @click="slipMarker(-1)" label="-1s" no-caps color="secondary" outline>
+              <q-tooltip>Slip marker start time backward 1s</q-tooltip>
             </q-btn>
 
             <!-- Marker time (clickable to play from marker) -->
@@ -182,13 +182,13 @@
               <q-tooltip>Play from marker start</q-tooltip>
             </q-btn>
 
-            <!-- Seek forward 5s -->
-            <q-btn @click="seekForward(5)" label="5s >>" no-caps>
-              <q-tooltip>Seek forward 5s</q-tooltip>
+            <!-- Slip marker forward 1s -->
+            <q-btn @click="slipMarker(1)" label="+1s" no-caps color="secondary" outline>
+              <q-tooltip>Slip marker start time forward 1s</q-tooltip>
             </q-btn>
-            <!-- Seek forward 30s (desktop only) -->
-            <q-btn @click="seekForward(30)" label="30s >>" no-caps class="gt-xs">
-              <q-tooltip>Seek forward 30s</q-tooltip>
+            <!-- Slip marker forward 5s -->
+            <q-btn @click="slipMarker(5)" label="+5s" no-caps color="secondary" outline>
+              <q-tooltip>Slip marker start time forward 5s</q-tooltip>
             </q-btn>
           </div>
         </div>
@@ -364,6 +364,7 @@ const emit = defineEmits([
   'seek',
   'playFromMarker',
   'togglePlayPause',
+  'markerUpdated',
 ])
 
 const route = useRoute()
@@ -388,6 +389,33 @@ function seekBackward(seconds) {
 
 function seekForward(seconds) {
   emit('seek', seconds)
+}
+
+async function slipMarker(seconds) {
+  if (!props.marker) return
+
+  const newStartTime = Math.max(0, props.marker.start_time + seconds)
+  const newEndTime = props.marker.end_time ? props.marker.end_time + seconds : null
+
+  try {
+    const token = route.query.token
+    await apiService.updateMarker(props.marker.id, token, newStartTime, newEndTime)
+
+    $q.notify({
+      type: 'positive',
+      message: `Marker time adjusted by ${seconds > 0 ? '+' : ''}${seconds}s`,
+      icon: 'schedule',
+      timeout: 1000,
+    })
+
+    emit('markerUpdated')
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.response?.data?.error || 'Failed to update marker',
+      icon: 'error',
+    })
+  }
 }
 
 function playFromMarker() {

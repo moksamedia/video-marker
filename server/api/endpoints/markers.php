@@ -17,6 +17,9 @@ class MarkersEndpoint {
         switch ($method) {
             case 'POST':
                 return $this->createMarker($path, $params);
+            case 'PUT':
+            case 'PATCH':
+                return $this->updateMarker($path, $params);
             case 'DELETE':
                 return $this->deleteMarker($path, $params);
             default:
@@ -83,6 +86,64 @@ class MarkersEndpoint {
 
         http_response_code(201);
         return $marker;
+    }
+
+    private function updateMarker($path, $params) {
+        // Extract marker ID from path: /api/markers/{id}
+        preg_match('/\/api\/markers\/([^\/]+)/', $path, $matches);
+        $markerId = $matches[1] ?? null;
+
+        if (!$markerId || !isset($params['token'])) {
+            http_response_code(400);
+            return ['error' => 'Marker ID and token are required'];
+        }
+
+        // Get session ID for this marker
+        $stmt = $this->pdo->prepare('SELECT session_id, start_time, end_time FROM markers WHERE id = ?');
+        $stmt->execute([$markerId]);
+        $marker = $stmt->fetch();
+
+        if (!$marker) {
+            http_response_code(404);
+            return ['error' => 'Marker not found'];
+        }
+
+        $role = $this->auth->validateToken($marker['session_id'], $params['token']);
+        if ($role !== 'creator') {
+            http_response_code(403);
+            return ['error' => 'Only creator can update markers'];
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        // Get new times, defaulting to current values
+        $newStartTime = isset($data['start_time']) ? (float)$data['start_time'] : $marker['start_time'];
+        $newEndTime = isset($data['end_time']) ? (float)$data['end_time'] : $marker['end_time'];
+
+        // Validate that start_time is not negative
+        if ($newStartTime < 0) {
+            http_response_code(400);
+            return ['error' => 'Start time cannot be negative'];
+        }
+
+        // Validate range marker end time
+        if ($newEndTime !== null && $newEndTime <= $newStartTime) {
+            http_response_code(400);
+            return ['error' => 'End time must be after start time'];
+        }
+
+        // Update marker
+        $stmt = $this->pdo->prepare(
+            'UPDATE markers SET start_time = ?, end_time = ? WHERE id = ?'
+        );
+        $stmt->execute([$newStartTime, $newEndTime, $markerId]);
+
+        // Return updated marker
+        $stmt = $this->pdo->prepare('SELECT * FROM markers WHERE id = ?');
+        $stmt->execute([$markerId]);
+        $updatedMarker = $stmt->fetch();
+
+        return $updatedMarker;
     }
 
     private function deleteMarker($path, $params) {

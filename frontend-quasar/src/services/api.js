@@ -84,6 +84,24 @@ export const apiService = {
   },
 
   /**
+   * Update a marker's times (creator only)
+   * @param {number} markerId - The marker ID
+   * @param {string} token - Creator token
+   * @param {number} startTime - New start time
+   * @param {number|null} endTime - New end time (optional)
+   * @returns {Promise} Updated marker data
+   */
+  async updateMarker(markerId, token, startTime, endTime = null) {
+    const response = await api.put(`/markers/${markerId}`, {
+      start_time: startTime,
+      end_time: endTime
+    }, {
+      params: { token },
+    })
+    return response.data
+  },
+
+  /**
    * Delete a marker (creator only)
    * @param {number} markerId - The marker ID
    * @param {string} token - Creator token

@@ -122,6 +122,7 @@
           @marker-selected="sessionStore.setSelectedMarker"
           @seek="handleSeek"
           @play-from-marker="handlePlayFromMarker"
+          @marker-updated="refreshSession"
         />
       </div>
     </div>
