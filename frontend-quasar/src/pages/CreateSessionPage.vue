@@ -47,21 +47,25 @@
               :disable="isLoading"
               :rules="[
                 (val) => !val || val.length >= 3 || 'Name must be at least 3 characters',
-                (val) => !val || val.length <= 50 || 'Name must be less than 50 characters'
+                (val) => !val || val.length <= 100 || 'Name must be less than 100 characters',
               ]"
               lazy-rules
-              class="q-mb-md"
-              hint="Optional: Custom name for your URL (e.g. my-tibetan-lesson). Leave blank for random ID."
+              class="q-mb-sm"
+              hint="Optional: Custom name for your URL. Leave blank for random ID."
             >
               <template v-slot:prepend>
                 <q-icon name="label" />
               </template>
-              <template v-slot:append v-if="sessionName">
-                <q-chip dense size="sm" color="grey-3">
-                  {{ slugPreview }}
-                </q-chip>
-              </template>
             </q-input>
+
+            <!-- URL Preview -->
+            <div v-if="slugPreview" class="q-mb-md q-px-sm">
+              <div class="text-caption text-grey-7 q-mb-xs">URL Preview:</div>
+              <div class="url-preview q-pa-sm">
+                <q-icon name="link" size="xs" class="q-mr-xs" />
+                <span class="text-body2 text-grey-8">{{ urlPreview }}</span>
+              </div>
+            </div>
 
             <q-input
               v-model="youtubeUrl"
@@ -114,13 +118,7 @@
                 <q-icon name="manage_accounts" color="primary" />
                 Your URL (Creator - Full Access)
               </div>
-              <q-input
-                :model-value="creatorUrl"
-                outlined
-                readonly
-                dense
-                class="q-mb-sm"
-              >
+              <q-input :model-value="creatorUrl" outlined readonly dense class="q-mb-sm">
                 <template v-slot:append>
                   <q-btn
                     flat
@@ -181,6 +179,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { apiService } from 'src/services/api'
+import ewts from 'src/lib/jsewts'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -193,13 +192,17 @@ const sessionData = ref(null)
 const videoMetadata = ref(null)
 const isFetchingMetadata = ref(false)
 
-// Generate URL slug preview
+// Generate URL slug preview - converts Tibetan Unicode to Wylie
 const slugPreview = computed(() => {
   if (!sessionName.value) return ''
-  return sessionName.value
+
+  // Convert Tibetan Unicode to Wylie (preserves English text)
+  const wylieConverted = ewts.toWylie(sessionName.value)
+
+  return wylieConverted
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[^\w\s-]/g, '') // Remove special characters (keeps alphanumeric, spaces, hyphens)
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/--+/g, '-') // Replace multiple hyphens with single
     .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
@@ -215,6 +218,13 @@ const helperUrl = computed(() => {
   if (!sessionData.value) return ''
   const base = window.location.origin
   return `${base}/#/helper/${sessionData.value.id}?token=${sessionData.value.helper_token}`
+})
+
+// URL preview for session name
+const urlPreview = computed(() => {
+  if (!slugPreview.value) return ''
+  const base = window.location.origin
+  return `${base}/#/creator/${slugPreview.value}`
 })
 
 // Watch for YouTube URL changes to fetch metadata
@@ -251,10 +261,12 @@ async function fetchVideoMetadata(url) {
     videoMetadata.value = data
 
     // Auto-populate session name with truncated title (max 50 chars)
+    const max_length_chars = 100
     if (data.title && !sessionName.value) {
-      const truncatedTitle = data.title.length > 50
-        ? data.title.substring(0, 50).trim()
-        : data.title
+      const truncatedTitle =
+        data.title.length > max_length_chars
+          ? data.title.substring(0, max_length_chars).trim()
+          : data.title
       sessionName.value = truncatedTitle
     }
   } catch (err) {
@@ -270,9 +282,10 @@ async function createSession() {
   error.value = null
 
   try {
-    // Only pass session name if provided
-    const name = sessionName.value ? slugPreview.value : null
-    sessionData.value = await apiService.createSession(youtubeUrl.value, name)
+    // Pass both session name and slug if provided
+    const name = sessionName.value || null
+    const slug = slugPreview.value || null
+    sessionData.value = await apiService.createSession(youtubeUrl.value, name, slug)
     $q.notify({
       type: 'positive',
       message: 'Session created successfully!',
@@ -314,3 +327,13 @@ function goToSession(url) {
   router.push(urlObj.hash.substring(1)) // Remove the # from hash
 }
 </script>
+
+<style scoped>
+.url-preview {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border-left: 3px solid #1976d2;
+  font-family: monospace;
+  word-break: break-all;
+}
+</style>

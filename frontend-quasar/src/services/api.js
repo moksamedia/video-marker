@@ -20,13 +20,15 @@ export const apiService = {
   /**
    * Create a new session with a YouTube URL
    * @param {string} youtubeUrl - The YouTube video URL
-   * @param {string} sessionName - The session name (will be converted to slug for ID)
+   * @param {string} sessionName - The session name (original text, may include Tibetan)
+   * @param {string} slug - The URL-safe slug (Wylie-converted, optional)
    * @returns {Promise} Session data with creator_token and helper_token
    */
-  async createSession(youtubeUrl, sessionName) {
+  async createSession(youtubeUrl, sessionName, slug) {
     const response = await api.post('/sessions', {
       youtube_url: youtubeUrl,
-      session_name: sessionName
+      session_name: sessionName,
+      slug: slug
     })
     return response.data
   },
