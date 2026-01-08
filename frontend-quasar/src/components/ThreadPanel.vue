@@ -337,7 +337,6 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import AudioRecorder from './AudioRecorder.vue'
 import AudioPlayer from './AudioPlayer.vue'
@@ -371,7 +370,6 @@ const emit = defineEmits([
   'markerUpdated',
 ])
 
-const route = useRoute()
 const $q = useQuasar()
 
 const textContent = ref('')
