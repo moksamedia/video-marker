@@ -1,25 +1,70 @@
 #!/bin/bash
 
-# Video Markup - Build for Deployment
-# This script creates a production-ready build in the /dist directory
+# Video Markup - Build and Deploy with rsync/FTP
+# This script builds and optionally deploys via rsync (fast) or FTP (fallback)
 
 # ============================================
 # Configuration
 # ============================================
 DEPLOY_DOMAIN="${DEPLOY_DOMAIN:-videomark.learntibetanlanguage.org}"
-FTP_HOST="ftp.moksamedia.com"
-FTP_USERNAME="${FTP_USERNAME:-videomarkftp@videomark.learntibetanlanguage.org}"
+
+# SSH/rsync configuration (faster, recommended)
+SSH_HOST="${SSH_HOST:-moksamedia.com}"
+SSH_USER="${SSH_USER:-moksamed}"
+SSH_PORT="${SSH_PORT:-17177}"
+SSH_REMOTE_DIR="${SSH_REMOTE_DIR:-/home/moksamed/$DEPLOY_DOMAIN}"
+
+# FTP configuration (fallback for shared hosting without SSH)
+FTP_HOST="${FTP_HOST:-ftp.moksamedia.com}"
+FTP_USERNAME="${FTP_USERNAME:-videomark@videomark.learntibetanlanguage.org}"
 FTP_REMOTE_DIR="/"
 
 # Parse command line arguments
-FTP_PASSWORD=""
-while getopts "p:" opt; do
+DEPLOY_METHOD=""
+DEPLOY_PASSWORD=""
+while getopts "r:p:h" opt; do
   case $opt in
+    r)
+      DEPLOY_METHOD="rsync"
+      DEPLOY_PASSWORD="$OPTARG"
+      ;;
     p)
-      FTP_PASSWORD="$OPTARG"
+      DEPLOY_METHOD="ftp"
+      DEPLOY_PASSWORD="$OPTARG"
+      ;;
+    h)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "Options:"
+      echo "  -r PASSWORD    Deploy via rsync/SSH (fast, recommended)"
+      echo "  -p PASSWORD    Deploy via FTP (slower, for basic hosting)"
+      echo "  -h             Show this help"
+      echo ""
+      echo "Environment variables:"
+      echo "  DEPLOY_DOMAIN  Target domain (default: videomark.learntibetanlanguage.org)"
+      echo "  SSH_USER       SSH username (default: moksamed)"
+      echo "  SSH_HOST       SSH host (default: moksamedia.com)"
+      echo "  SSH_PORT       SSH port (default: 17177)"
+      echo "  SSH_REMOTE_DIR Remote directory (default: /home/moksamed/\$DEPLOY_DOMAIN)"
+      echo "  FTP_USERNAME   FTP username"
+      echo ""
+      echo "Examples:"
+      echo "  # Build only:"
+      echo "  ./build-deploy-rsync.sh"
+      echo ""
+      echo "  # Build and deploy via rsync (fast):"
+      echo "  ./build-deploy-rsync.sh -r YOUR_SSH_PASSWORD"
+      echo ""
+      echo "  # Build and deploy via FTP (slower):"
+      echo "  ./build-deploy-rsync.sh -p YOUR_FTP_PASSWORD"
+      echo ""
+      echo "  # Custom domain:"
+      echo "  DEPLOY_DOMAIN=example.com ./build-deploy-rsync.sh -r PASSWORD"
+      exit 0
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
+      echo "Use -h for help"
       exit 1
       ;;
   esac
@@ -30,6 +75,9 @@ set -e  # Exit on error
 echo "🚀 Video Markup - Building for Deployment"
 echo "=========================================="
 echo "Target domain: $DEPLOY_DOMAIN"
+if [ -n "$DEPLOY_METHOD" ]; then
+  echo "Deploy method: $DEPLOY_METHOD"
+fi
 echo ""
 
 # Get script directory
@@ -216,9 +264,44 @@ echo "📁 Deployment files are in: ./dist"
 echo "🌐 Target domain: $DEPLOY_DOMAIN"
 echo ""
 
-# FTP Upload if password provided
-if [ -n "$FTP_PASSWORD" ]; then
-  echo "📤 Deploying to server via FTP..."
+# Deploy if method specified
+if [ "$DEPLOY_METHOD" = "rsync" ]; then
+  echo "📤 Deploying via rsync (fast, efficient)..."
+  echo "   Host: $SSH_HOST"
+  echo "   User: $SSH_USER"
+  echo "   Port: $SSH_PORT"
+  echo "   Remote directory: $SSH_REMOTE_DIR"
+  echo ""
+
+  # Check if sshpass is available (for password auth)
+  if command -v sshpass &> /dev/null; then
+    echo "Using rsync with password authentication..."
+    sshpass -p "$DEPLOY_PASSWORD" rsync -avz --delete \
+      -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+      dist/ "$SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
+
+    if [ $? -eq 0 ]; then
+      echo ""
+      echo "✅ Deployment successful!"
+      echo "🌐 Your app should now be live at: https://$DEPLOY_DOMAIN"
+    else
+      echo ""
+      echo "❌ Rsync deployment failed!"
+      exit 1
+    fi
+  else
+    echo "⚠️  sshpass not found. Install it for password-based rsync:"
+    echo "   macOS: brew install hudochenkov/sshpass/sshpass"
+    echo "   Linux: apt-get install sshpass or yum install sshpass"
+    echo ""
+    echo "Or use SSH key authentication (recommended):"
+    echo "   rsync -avz --delete -e 'ssh -p $SSH_PORT' dist/ $SSH_USER@$SSH_HOST:$SSH_REMOTE_DIR"
+    echo ""
+    exit 1
+  fi
+
+elif [ "$DEPLOY_METHOD" = "ftp" ]; then
+  echo "📤 Deploying via FTP..."
   echo "   Host: $FTP_HOST"
   echo "   User: $FTP_USERNAME"
   echo "   Remote directory: $FTP_REMOTE_DIR"
@@ -229,7 +312,7 @@ if [ -n "$FTP_PASSWORD" ]; then
     echo "Using lftp for deployment..."
     lftp -c "
       set ssl:verify-certificate no;
-      open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_HOST;
+      open -u $FTP_USERNAME,$DEPLOY_PASSWORD $FTP_HOST;
       cd $FTP_REMOTE_DIR;
       mirror -R --verbose dist/ ./;
       quit
@@ -238,7 +321,6 @@ if [ -n "$FTP_PASSWORD" ]; then
     if [ $? -eq 0 ]; then
       echo ""
       echo "✅ Deployment successful!"
-      echo ""
       echo "🌐 Your app should now be live at: https://$DEPLOY_DOMAIN"
     else
       echo ""
@@ -255,7 +337,7 @@ if [ -n "$FTP_PASSWORD" ]; then
 
     # Basic FTP upload (limited)
     ftp -n $FTP_HOST << FTPEOF
-user $FTP_USERNAME $FTP_PASSWORD
+user $FTP_USERNAME $DEPLOY_PASSWORD
 binary
 cd $FTP_REMOTE_DIR
 lcd dist
@@ -276,7 +358,9 @@ FTPEOF
       exit 1
     fi
   fi
+
 else
+  # No deployment method specified - show manual instructions
   echo "Next steps:"
   echo "  1. Edit dist/server/config.php and set BASE_URL to 'https://$DEPLOY_DOMAIN/'"
   echo "  2. Read dist/DEPLOY_INSTRUCTIONS.txt"
@@ -284,11 +368,15 @@ else
   echo ""
   echo "For detailed instructions, see PHP_DEPLOY.md"
   echo ""
-  echo "💡 To build for a different domain, run:"
-  echo "   DEPLOY_DOMAIN=yourdomain.com ./build-deploy.sh"
+  echo "💡 Quick deployment options:"
   echo ""
-  echo "💡 To build AND deploy via FTP, run:"
-  echo "   ./build-deploy.sh -p YOUR_FTP_PASSWORD"
+  echo "   rsync (fast, recommended if you have SSH access):"
+  echo "   ./build-deploy-rsync.sh -r YOUR_SSH_PASSWORD"
+  echo ""
+  echo "   FTP (slower, works on basic shared hosting):"
+  echo "   ./build-deploy-rsync.sh -p YOUR_FTP_PASSWORD"
+  echo ""
+  echo "   Use -h for more options and help"
 fi
 
 echo ""
