@@ -14,9 +14,15 @@
           <div
             v-if="showTooltip"
             class="timeline-tooltip"
+            :class="{ 'over-marker': hoveredMarker }"
             :style="{ left: tooltipPosition.x + 'px' }"
           >
-            {{ formatTime(tooltipTime) }}
+            <template v-if="hoveredMarker">
+              Marker #{{ getMarkerNumber(hoveredMarker) }}
+            </template>
+            <template v-else>
+              {{ formatTime(tooltipTime) }}
+            </template>
           </div>
 
           <!-- Current time indicator -->
@@ -91,6 +97,7 @@ const timelineRef = ref(null)
 const showTooltip = ref(false)
 const tooltipPosition = ref({ x: 0 })
 const tooltipTime = ref(0)
+const hoveredMarker = ref(null)
 
 const pointMarkers = computed(() => {
   return props.markers.filter((m) => m.end_time === null)
@@ -136,6 +143,34 @@ function handleMouseMove(event) {
 
   tooltipPosition.value = { x: mouseX }
   tooltipTime.value = time
+
+  // Check if hovering over a marker
+  hoveredMarker.value = findMarkerAtTime(time)
+}
+
+function findMarkerAtTime(time) {
+  // Check range markers first (they're easier to hit)
+  for (const marker of rangeMarkers.value) {
+    if (time >= marker.start_time && time <= marker.end_time) {
+      return marker
+    }
+  }
+
+  // Check point markers (within 1 second threshold)
+  const threshold = 1.0
+  for (const marker of pointMarkers.value) {
+    if (Math.abs(time - marker.start_time) <= threshold) {
+      return marker
+    }
+  }
+
+  return null
+}
+
+function getMarkerNumber(marker) {
+  // Find marker index in the sorted markers array
+  const index = props.markers.findIndex(m => m.id === marker.id)
+  return index + 1
 }
 
 function formatTime(seconds) {
@@ -173,6 +208,12 @@ function isSelectedMarker(marker) {
   white-space: nowrap;
   pointer-events: none;
   z-index: 20;
+  transition: background 0.2s;
+}
+
+.timeline-tooltip.over-marker {
+  background: rgba(255, 107, 107, 0.95);
+  font-weight: 600;
 }
 
 .current-time-indicator {
