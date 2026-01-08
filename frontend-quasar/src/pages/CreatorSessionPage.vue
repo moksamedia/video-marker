@@ -26,38 +26,42 @@
     <div v-else-if="sessionStore.session" class="session-container">
       <!-- Video Info Header -->
       <q-card class="q-mb-md">
-        <q-card-section class="row items-center">
-          <q-avatar size="64px" rounded>
-            <img :src="sessionStore.session.youtube_thumbnail" alt="Video thumbnail" />
-          </q-avatar>
-          <div class="q-ml-md col">
-            <div class="text-h6">{{ sessionStore.session.youtube_title }}</div>
-            <div class="text-caption text-grey-7">
-              <q-chip dense color="primary" text-color="white" icon="manage_accounts">
-                Creator Mode
-              </q-chip>
+        <q-card-section class="session-header">
+          <div class="header-row">
+            <q-avatar size="64px" rounded>
+              <img :src="sessionStore.session.youtube_thumbnail" alt="Video thumbnail" />
+            </q-avatar>
+            <div class="title-section">
+              <div class="text-h6">{{ sessionStore.session.youtube_title }}</div>
+              <div class="text-caption text-grey-7">
+                <q-chip dense color="primary" text-color="white" icon="manage_accounts">
+                  Creator Mode
+                </q-chip>
+              </div>
+            </div>
+            <div class="header-buttons">
+              <q-btn
+                flat
+                round
+                dense
+                icon="content_copy"
+                @click="copyHelperLink"
+                color="secondary"
+              >
+                <q-tooltip>Copy helper link</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                icon="open_in_new"
+                @click="openHelperPage"
+                color="secondary"
+              >
+                <q-tooltip>Open helper page</q-tooltip>
+              </q-btn>
             </div>
           </div>
-          <q-btn
-            flat
-            round
-            dense
-            icon="content_copy"
-            @click="copyHelperLink"
-            color="secondary"
-          >
-            <q-tooltip>Copy helper link</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            round
-            dense
-            icon="open_in_new"
-            @click="openHelperPage"
-            color="secondary"
-          >
-            <q-tooltip>Open helper page</q-tooltip>
-          </q-btn>
         </q-card-section>
       </q-card>
 
@@ -344,5 +348,46 @@ function handleKeyDown(event) {
   display: flex;
   flex-direction: column;
   width: 100%;
+}
+
+/* Session header responsive layout */
+.session-header {
+  padding: 16px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.title-section {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.header-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Mobile layout: stack title below thumbnail and buttons */
+@media (max-width: 500px) {
+  .header-row {
+    flex-wrap: wrap;
+  }
+
+  .title-section {
+    order: 3;
+    flex-basis: 100%;
+    margin-top: 12px;
+    margin-left: 0;
+  }
+
+  .header-buttons {
+    order: 2;
+    margin-left: auto;
+  }
 }
 </style>
