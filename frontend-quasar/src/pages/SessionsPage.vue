@@ -126,8 +126,9 @@
           :key="session.id"
           clickable
           @click="goToCreator(session)"
+          class="session-list-item"
         >
-          <q-item-section avatar>
+          <q-item-section avatar class="session-thumbnail">
             <q-img
               :src="session.youtube_thumbnail"
               style="width: 120px; height: 68px"
@@ -135,7 +136,7 @@
             />
           </q-item-section>
 
-          <q-item-section>
+          <q-item-section class="session-info">
             <q-item-label class="text-weight-medium">
               {{ session.youtube_title }}
             </q-item-label>
@@ -147,7 +148,7 @@
             </q-item-label>
           </q-item-section>
 
-          <q-item-section side>
+          <q-item-section side class="session-actions">
             <div class="row q-gutter-xs">
               <q-btn
                 flat
@@ -316,5 +317,30 @@ function formatDate(dateString) {
 .sessions-container {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Mobile responsive list view */
+@media (max-width: 500px) {
+  .session-list-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .session-thumbnail {
+    order: 1;
+    flex-shrink: 0;
+  }
+
+  .session-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .session-info {
+    order: 3;
+    flex-basis: 100%;
+    margin-top: 12px;
+    padding-left: 0 !important;
+  }
 }
 </style>
