@@ -154,6 +154,18 @@ function loadYouTubeAPI() {
   window.ytCallbacks.push(initPlayer)
 }
 function initPlayer() {
+  console.log('Initializing YouTube player with video ID:', props.videoId)
+
+  if (!props.videoId || props.videoId.length !== 11) {
+    console.error('Invalid video ID:', props.videoId)
+    $q.notify({
+      type: 'negative',
+      message: 'Invalid video ID format. Please check the YouTube URL.',
+      icon: 'error',
+    })
+    return
+  }
+
   player.value = new window.YT.Player('creator-youtube-player', {
     videoId: props.videoId,
     width: '100%',

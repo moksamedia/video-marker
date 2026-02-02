@@ -72,6 +72,18 @@ function loadYouTubeAPI() {
 }
 
 function initPlayer() {
+  console.log('Initializing helper YouTube player with video ID:', props.videoId)
+
+  if (!props.videoId || props.videoId.length !== 11) {
+    console.error('Invalid video ID:', props.videoId)
+    $q.notify({
+      type: 'negative',
+      message: 'Invalid video ID format. Please check the YouTube URL.',
+      icon: 'error',
+    })
+    return
+  }
+
   // When using an existing iframe, only pass the element ID and events
   // No videoId or playerVars needed - those are in the iframe src
   player.value = new window.YT.Player('helper-youtube-player', {
