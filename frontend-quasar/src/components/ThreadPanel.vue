@@ -131,8 +131,9 @@
         </div>
 
         <!-- WhatsApp-style Input -->
-        <div v-else class="whatsapp-input">
+        <div v-else class="whatsapp-input" ref="inputContainer">
           <q-input
+            ref="messageInput"
             v-model="textContent"
             outlined
             autogrow
@@ -140,6 +141,7 @@
             :disable="isSaving"
             class="message-input"
             @keyup.enter="handleEnter"
+            @focus="handleInputFocus"
           />
           <q-btn
             round
@@ -163,7 +165,7 @@
         <div class="row items-center justify-center q-gutter-xs">
           <div class="row items-center q-gutter-xs">
             <!-- Slip marker backward 5s -->
-            <q-btn @click="slipMarker(-5)" label="-5s" no-caps color="secondary" outline>
+            <q-btn @click="slipMarker(-5)" label="-5s" no-caps color="secondary" outline class="slip-5s">
               <q-tooltip>Slip marker start time backward 5s</q-tooltip>
             </q-btn>
             <!-- Slip marker backward 1s -->
@@ -187,7 +189,7 @@
               <q-tooltip>Slip marker start time forward 1s</q-tooltip>
             </q-btn>
             <!-- Slip marker forward 5s -->
-            <q-btn @click="slipMarker(5)" label="+5s" no-caps color="secondary" outline>
+            <q-btn @click="slipMarker(5)" label="+5s" no-caps color="secondary" outline class="slip-5s">
               <q-tooltip>Slip marker start time forward 5s</q-tooltip>
             </q-btn>
           </div>
@@ -378,6 +380,8 @@ const isSaving = ref(false)
 const editingPostId = ref(null)
 const editingText = ref('')
 const replyMode = ref(null) // null, 'text', or 'record'
+const messageInput = ref(null)
+const inputContainer = ref(null)
 
 // Marker navigation
 const currentMarkerIndex = computed(() => {
@@ -490,6 +494,19 @@ function handleEnter(event) {
     event.preventDefault()
     savePost()
   }
+}
+
+function handleInputFocus() {
+  // Scroll input into view when keyboard appears on mobile
+  // Use setTimeout to allow keyboard animation to complete
+  setTimeout(() => {
+    if (inputContainer.value) {
+      inputContainer.value.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, 300)
 }
 
 function formatTime(seconds) {
@@ -767,11 +784,34 @@ async function saveEdit(post) {
 .whatsapp-input .action-btn {
   flex-shrink: 0;
 }
+
+/* Mobile: hide 5s slip buttons, keep only 1s buttons */
+@media (max-width: 599px) {
+  .slip-5s {
+    display: none;
+  }
+
+  /* Smaller font sizes for posts on mobile */
+  .post-text-content {
+    font-size: 1rem;
+  }
+
+  .post-text-input :deep(textarea) {
+    font-size: 1rem;
+  }
+}
 </style>
 <style>
 /* Tibetan text - even larger font */
 .post-text-content .tibetan-text {
   font-size: 2.2rem;
   line-height: 1.6;
+}
+
+/* Mobile: smaller Tibetan text */
+@media (max-width: 599px) {
+  .post-text-content .tibetan-text {
+    font-size: 1.6rem;
+  }
 }
 </style>

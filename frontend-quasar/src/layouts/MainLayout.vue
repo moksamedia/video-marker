@@ -74,7 +74,7 @@
                   to {{ formatTime(marker.end_time) }}
                 </q-item-label>
                 <q-item-label caption class="q-mt-xs">
-                  {{ marker.posts?.length || 0 }} post(s)
+                  {{ marker.posts?.length || 0 }} message(s)
                 </q-item-label>
               </q-item-section>
 

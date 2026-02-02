@@ -1,6 +1,12 @@
 <template>
   <div class="helper-video-player">
-    <div id="helper-youtube-player" ref="playerEl"></div>
+    <iframe
+      id="helper-youtube-player"
+      :src="`https://www.youtube.com/embed/${props.videoId}?enablejsapi=1&modestbranding=1&rel=0`"
+      style="border: 0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
   </div>
 </template>
 
@@ -16,7 +22,6 @@ const props = defineProps({
 
 const emit = defineEmits(['currentTimeUpdate', 'durationUpdate'])
 
-const playerEl = ref(null)
 const player = ref(null)
 const currentTime = ref(0)
 
@@ -50,14 +55,9 @@ function loadYouTubeAPI() {
 }
 
 function initPlayer() {
+  // When using an existing iframe, only pass the element ID and events
+  // No videoId or playerVars needed - those are in the iframe src
   player.value = new window.YT.Player('helper-youtube-player', {
-    videoId: props.videoId,
-    width: '100%',
-    height: '400',
-    playerVars: {
-      modestbranding: 1,
-      rel: 0,
-    },
     events: {
       onReady: onPlayerReady,
       onStateChange: onPlayerStateChange,
@@ -135,6 +135,7 @@ defineExpose({
 
 #helper-youtube-player {
   width: 100%;
+  height: 100%;
   aspect-ratio: 16 / 9;
 }
 </style>

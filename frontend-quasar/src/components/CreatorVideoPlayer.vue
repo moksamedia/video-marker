@@ -7,19 +7,13 @@
         <q-btn
           color="primary"
           icon="place"
-          label="Mark Current Time"
+          class="mark-btn"
           @click="createPointMarker"
           :disable="!player"
-        />
-
-        <q-btn
-          v-if="selectedMarker"
-          color="negative"
-          icon="delete_outline"
-          label="Delete Marker"
-          @click="confirmDeleteMarker"
-          outline
-        />
+        >
+          <span class="mobile-label">Mark</span>
+          <span class="desktop-label">Mark Current Time</span>
+        </q-btn>
 
         <!--
         <q-btn
@@ -44,14 +38,14 @@
         <q-space />
 
         <!-- Seek Backward Controls -->
-        <q-btn-group flat>
-          <q-btn icon="replay_5" @click="seekBackward(5)" :disable="!player" size="lg">
+        <q-btn-group flat class="seek-controls">
+          <q-btn icon="replay_5" @click="seekBackward(5)" :disable="!player" class="seek-btn">
             <q-tooltip>Rewind 5s</q-tooltip>
           </q-btn>
-          <q-btn icon="replay_10" @click="seekBackward(10)" :disable="!player" size="lg">
+          <q-btn icon="replay_10" @click="seekBackward(10)" :disable="!player" class="seek-btn">
             <q-tooltip>Rewind 10s</q-tooltip>
           </q-btn>
-          <q-btn icon="replay_30" @click="seekBackward(30)" :disable="!player" size="lg">
+          <q-btn icon="replay_30" @click="seekBackward(30)" :disable="!player" class="seek-btn">
             <q-tooltip>Rewind 30s</q-tooltip>
           </q-btn>
         </q-btn-group>
@@ -83,14 +77,6 @@
             size="sm"
           />
         </q-btn-group>
-
-        <q-btn
-          color="negative"
-          icon="delete"
-          label="Delete Session"
-          @click="confirmDeleteSession"
-          outline
-        />
       </div>
 
       <div v-if="rangeStart" class="q-mt-sm">
@@ -114,13 +100,9 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  selectedMarker: {
-    type: Object,
-    default: null,
-  },
 })
 
-const emit = defineEmits(['currentTimeUpdate', 'createMarker', 'deleteSession', 'durationUpdate', 'deleteMarker'])
+const emit = defineEmits(['currentTimeUpdate', 'createMarker', 'durationUpdate'])
 
 const $q = useQuasar()
 const playerEl = ref(null)
@@ -157,7 +139,6 @@ function loadYouTubeAPI() {
 
   window.onYouTubeIframeAPIReady = initPlayer
 }
-
 function initPlayer() {
   player.value = new window.YT.Player('creator-youtube-player', {
     videoId: props.videoId,
@@ -277,31 +258,6 @@ function seekBackward(seconds) {
   })
 }
 
-function confirmDeleteSession() {
-  $q.dialog({
-    title: 'Delete Session',
-    message:
-      'Are you sure you want to delete this session? This will delete all markers and posts.',
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    emit('deleteSession')
-  })
-}
-
-function confirmDeleteMarker() {
-  if (!props.selectedMarker) return
-
-  $q.dialog({
-    title: 'Delete Marker',
-    message: 'Are you sure you want to delete this marker? This will also delete all posts on this marker.',
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    emit('deleteMarker', props.selectedMarker.id)
-  })
-}
-
 function seekToTime(time) {
   if (player.value && player.value.seekTo) {
     player.value.seekTo(time, true)
@@ -346,8 +302,38 @@ defineExpose({
   width: 100%;
 }
 
-#creator-youtube-player {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+/* Desktop: show full labels */
+.mobile-label {
+  display: none;
+}
+.desktop-label {
+  display: inline;
+}
+
+/* Desktop: normal size seek buttons */
+.seek-btn {
+  font-size: 1.5rem;
+}
+
+/* Mobile: show short labels and compact seek buttons */
+@media (max-width: 599px) {
+  .mobile-label {
+    display: inline;
+  }
+  .desktop-label {
+    display: none;
+  }
+
+  /* Smaller, more compact seek buttons */
+  .seek-btn {
+    font-size: 1rem;
+    padding: 4px 8px;
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  .seek-controls {
+    gap: 2px;
+  }
 }
 </style>

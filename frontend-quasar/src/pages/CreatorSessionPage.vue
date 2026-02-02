@@ -9,9 +9,7 @@
     <div v-else-if="error" class="row justify-center">
       <q-card style="max-width: 500px; width: 100%">
         <q-card-section class="bg-negative text-white">
-          <div class="text-h6">
-            <q-icon name="error" /> Error Loading Session
-          </div>
+          <div class="text-h6"><q-icon name="error" /> Error Loading Session</div>
         </q-card-section>
         <q-card-section>
           {{ error }}
@@ -40,24 +38,10 @@
               </div>
             </div>
             <div class="header-buttons">
-              <q-btn
-                flat
-                round
-                dense
-                icon="content_copy"
-                @click="copyHelperLink"
-                color="secondary"
-              >
+              <q-btn flat round dense icon="content_copy" @click="copyHelperLink" color="secondary">
                 <q-tooltip>Copy helper link</q-tooltip>
               </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="open_in_new"
-                @click="openHelperPage"
-                color="secondary"
-              >
+              <q-btn flat round dense icon="open_in_new" @click="openHelperPage" color="secondary">
                 <q-tooltip>Open helper page</q-tooltip>
               </q-btn>
             </div>
@@ -71,12 +55,9 @@
         <CreatorVideoPlayer
           ref="videoPlayerRef"
           :video-id="getYouTubeId(sessionStore.session.youtube_url)"
-          :selected-marker="sessionStore.selectedMarker"
           @current-time-update="sessionStore.setCurrentTime($event)"
           @duration-update="sessionStore.setVideoDuration($event)"
           @create-marker="handleCreateMarker"
-          @delete-session="handleDeleteSession"
-          @delete-marker="handleDeleteMarker"
           class="q-mb-md"
         />
 
@@ -113,6 +94,23 @@
           </q-btn>
         </div>
 
+        <!-- Current Marker Info -->
+        <div v-if="sessionStore.selectedMarker" class="row items-center justify-between q-my-md">
+          <div class="text-h6 text-grey-8">
+            Current Mark ({{ currentMarkerIndex + 1 }}/{{ sessionStore.markers.length }}):
+            {{ formatTime(sessionStore.selectedMarker.start_time) }}s
+          </div>
+          <q-btn
+            round
+            color="negative"
+            icon="delete_outline"
+            @click="confirmDeleteMarker"
+            size="md"
+          >
+            <q-tooltip>Delete marker</q-tooltip>
+          </q-btn>
+        </div>
+
         <!-- Thread Panel - Full Width -->
         <ThreadPanel
           :marker="sessionStore.selectedMarker"
@@ -132,7 +130,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { apiService } from 'src/services/api'
 import { useSessionStore } from 'src/stores/session-store'
@@ -141,14 +139,13 @@ import MarkerTimeline from 'src/components/MarkerTimeline.vue'
 import ThreadPanel from 'src/components/ThreadPanel.vue'
 
 const route = useRoute()
-const router = useRouter()
 const $q = useQuasar()
 const sessionStore = useSessionStore()
 
 const loading = ref(true)
 const error = ref(null)
 const videoPlayerRef = ref(null)
-const sessionToken = ref(null)  // Store token to prevent Android query param issues
+const sessionToken = ref(null) // Store token to prevent Android query param issues
 
 const helperUrl = computed(() => {
   if (!sessionStore.session) return ''
@@ -171,11 +168,14 @@ const hasNextMarker = computed(() => {
 })
 
 // Watch for marker selection from drawer
-watch(() => sessionStore.selectedMarker, (newMarker) => {
-  if (newMarker && videoPlayerRef.value) {
-    videoPlayerRef.value.seekToTime(newMarker.start_time)
-  }
-})
+watch(
+  () => sessionStore.selectedMarker,
+  (newMarker) => {
+    if (newMarker && videoPlayerRef.value) {
+      videoPlayerRef.value.seekToTime(newMarker.start_time)
+    }
+  },
+)
 
 onMounted(() => {
   loadSession()
@@ -244,24 +244,17 @@ async function handleCreateMarker(startTime, endTime) {
   }
 }
 
-async function handleDeleteSession() {
-  try {
-    await apiService.deleteSession(route.params.id, sessionToken.value)
+function confirmDeleteMarker() {
+  if (!sessionStore.selectedMarker) return
 
-    $q.notify({
-      type: 'positive',
-      message: 'Session deleted',
-      icon: 'delete',
-    })
-
-    router.push('/')
-  } catch (err) {
-    $q.notify({
-      type: 'negative',
-      message: err.response?.data?.error || 'Failed to delete session',
-      icon: 'error',
-    })
-  }
+  $q.dialog({
+    title: 'Delete Marker',
+    message: 'Are you sure you want to delete this marker? This will also delete all posts on this marker.',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    handleDeleteMarker(sessionStore.selectedMarker.id)
+  })
 }
 
 async function handleDeleteMarker(markerId) {
@@ -350,11 +343,7 @@ function handleKeyDown(event) {
   if (event.code === 'Space' || event.key === ' ') {
     // Don't override spacebar if user is typing in an input or textarea
     const target = event.target
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.isContentEditable
-    ) {
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return
     }
 
@@ -364,6 +353,12 @@ function handleKeyDown(event) {
       videoPlayerRef.value.togglePlayPause()
     }
   }
+}
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 </script>
 
