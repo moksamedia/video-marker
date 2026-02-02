@@ -231,8 +231,25 @@ function handleTogglePlayPause() {
 
 function getYouTubeId(url) {
   if (!url) return ''
-  const match = url.match(/[?&]v=([^&]+)/)
-  return match ? match[1] : ''
+
+  // Handle various YouTube URL formats
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/, // Standard watch URL: ?v=VIDEO_ID
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/, // Short URL: youtu.be/VIDEO_ID
+    /embed\/([a-zA-Z0-9_-]{11})/, // Embed URL: /embed/VIDEO_ID
+    /\/v\/([a-zA-Z0-9_-]{11})/, // Old embed: /v/VIDEO_ID
+  ]
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match && match[1]) {
+      console.log('Extracted video ID:', match[1], 'from URL:', url)
+      return match[1]
+    }
+  }
+
+  console.error('Failed to extract video ID from URL:', url)
+  return ''
 }
 
 function handleKeyDown(event) {
