@@ -39,6 +39,20 @@ class SessionsEndpoint {
             return ['error' => 'youtube_url is required'];
         }
 
+        // Extract video ID and check if embeddable
+        $videoId = $this->extractVideoId($data['youtube_url']);
+        if (!$videoId) {
+            http_response_code(400);
+            return ['error' => 'Could not extract video ID from URL'];
+        }
+
+        // Check if video is embeddable
+        $embedCheck = $this->checkEmbeddable($videoId);
+        if (!$embedCheck['embeddable']) {
+            http_response_code(400);
+            return ['error' => 'This video cannot be embedded. The video owner has disabled embedding for this video. Please try a different video.'];
+        }
+
         // Use slug from frontend if provided, otherwise generate random ID
         if (isset($data['slug']) && trim($data['slug']) !== '') {
             $sessionId = trim($data['slug']);
@@ -210,5 +224,72 @@ class SessionsEndpoint {
         $sessions = $stmt->fetchAll();
 
         return ['sessions' => $sessions];
+    }
+
+    private function extractVideoId($url) {
+        // Handle various YouTube URL formats
+        $patterns = [
+            '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/',  // Standard watch URL
+            '/youtu\.be\/([a-zA-Z0-9_-]+)/',              // Short URL
+            '/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/',    // Embed URL
+            '/youtube\.com\/v\/([a-zA-Z0-9_-]+)/',        // Old embed URL
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $url, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    private function checkEmbeddable($videoId) {
+        // Check oEmbed endpoint (most reliable for embed status)
+        // YouTube returns 401 if embedding is disabled, 200 if allowed
+        $url = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={$videoId}&format=json";
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 5,
+                'ignore_errors' => true
+            ]
+        ]);
+
+        $response = @file_get_contents($url, false, $context);
+
+        // Check HTTP response code using modern PHP approach
+        $headers = function_exists('http_get_last_response_headers')
+            ? http_get_last_response_headers()
+            : (@$http_response_header ?: []);
+
+        if (!empty($headers)) {
+            foreach ($headers as $header) {
+                if (preg_match('/^HTTP\/\d\.\d\s+(\d{3})/', $header, $matches)) {
+                    $statusCode = (int)$matches[1];
+
+                    // 401 = Unauthorized (embedding disabled)
+                    // 404 = Not found
+                    if ($statusCode === 401 || $statusCode === 404) {
+                        return ['embeddable' => false];
+                    }
+                }
+            }
+        }
+
+        // If we couldn't fetch response, assume not embeddable
+        if ($response === false) {
+            return ['embeddable' => false];
+        }
+
+        $data = json_decode($response, true);
+
+        // If we got valid oEmbed data with HTML, it's embeddable
+        if (isset($data['html']) && !empty($data['html'])) {
+            return ['embeddable' => true];
+        }
+
+        return ['embeddable' => false];
     }
 }

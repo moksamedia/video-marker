@@ -132,12 +132,26 @@ function loadYouTubeAPI() {
     return
   }
 
-  const tag = document.createElement('script')
-  tag.src = 'https://www.youtube.com/iframe_api'
-  const firstScriptTag = document.getElementsByTagName('script')[0]
-  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+  // If script is already being loaded, wait for it
+  if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    const firstScriptTag = document.getElementsByTagName('script')[0]
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+  }
 
-  window.onYouTubeIframeAPIReady = initPlayer
+  // Add our callback to a queue to avoid overwriting
+  if (!window.onYouTubeIframeAPIReady) {
+    window.onYouTubeIframeAPIReady = () => {
+      if (window.ytCallbacks) {
+        window.ytCallbacks.forEach(cb => cb())
+        window.ytCallbacks = []
+      }
+    }
+    window.ytCallbacks = []
+  }
+  window.ytCallbacks = window.ytCallbacks || []
+  window.ytCallbacks.push(initPlayer)
 }
 function initPlayer() {
   player.value = new window.YT.Player('creator-youtube-player', {
@@ -147,11 +161,42 @@ function initPlayer() {
     playerVars: {
       modestbranding: 1,
       rel: 0,
+      origin: window.location.origin,
+      enablejsapi: 1,
     },
     events: {
       onReady: onPlayerReady,
       onStateChange: onPlayerStateChange,
+      onError: onPlayerError,
     },
+  })
+}
+
+function onPlayerError(event) {
+  console.error('YouTube Player Error:', event.data)
+  // Error codes:
+  // 2 = Invalid parameter
+  // 5 = HTML5 player error
+  // 100 = Video not found or private
+  // 101/150 = Video cannot be embedded
+
+  let errorMessage = 'Video playback error'
+  if (event.data === 100) {
+    errorMessage = 'Video not found or is private'
+  } else if (event.data === 101 || event.data === 150) {
+    errorMessage = 'This video cannot be embedded. Please try a different video.'
+  } else if (event.data === 2) {
+    errorMessage = 'Invalid video parameter'
+  } else if (event.data === 5) {
+    errorMessage = 'HTML5 player error. Try refreshing the page.'
+  }
+
+  $q.notify({
+    type: 'negative',
+    message: errorMessage,
+    caption: `Error code: ${event.data}`,
+    icon: 'error',
+    timeout: 5000,
   })
 }
 
@@ -300,6 +345,12 @@ defineExpose({
 <style scoped>
 .creator-video-player {
   width: 100%;
+}
+
+#creator-youtube-player {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 /* Desktop: show full labels */
