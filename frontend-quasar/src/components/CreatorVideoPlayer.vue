@@ -1,5 +1,5 @@
 <template>
-  <div class="creator-video-player">
+  <div class="creator-video-player" :class="`size-${videoSize}`">
     <div id="creator-youtube-player" ref="playerEl"></div>
 
     <div class="controls-container q-mt-md">
@@ -77,6 +77,37 @@
             size="sm"
           />
         </q-btn-group>
+
+        <!-- Video Size Controls -->
+        <q-btn-group outline>
+          <q-btn
+            :outline="videoSize !== 'small'"
+            :color="videoSize === 'small' ? 'primary' : 'grey-7'"
+            label="S"
+            @click="setVideoSize('small')"
+            size="sm"
+          >
+            <q-tooltip>Small video</q-tooltip>
+          </q-btn>
+          <q-btn
+            :outline="videoSize !== 'medium'"
+            :color="videoSize === 'medium' ? 'primary' : 'grey-7'"
+            label="M"
+            @click="setVideoSize('medium')"
+            size="sm"
+          >
+            <q-tooltip>Medium video</q-tooltip>
+          </q-btn>
+          <q-btn
+            :outline="videoSize !== 'large'"
+            :color="videoSize === 'large' ? 'primary' : 'grey-7'"
+            label="L"
+            @click="setVideoSize('large')"
+            size="sm"
+          >
+            <q-tooltip>Large video</q-tooltip>
+          </q-btn>
+        </q-btn-group>
       </div>
 
       <div v-if="rangeStart" class="q-mt-sm">
@@ -110,10 +141,17 @@ const player = ref(null)
 const currentTime = ref(0)
 const rangeStart = ref(null)
 const playbackSpeed = ref(1)
+const videoSize = ref('medium') // Default to medium
 
 let pollInterval = null
 
 onMounted(() => {
+  // Restore saved video size preference
+  const savedSize = localStorage.getItem('videoPlayerSize')
+  if (savedSize && ['small', 'medium', 'large'].includes(savedSize)) {
+    videoSize.value = savedSize
+  }
+
   loadYouTubeAPI()
 })
 
@@ -300,6 +338,26 @@ function setPlaybackSpeed(speed) {
   })
 }
 
+function setVideoSize(size) {
+  videoSize.value = size
+
+  // Save preference to localStorage
+  localStorage.setItem('videoPlayerSize', size)
+
+  const sizeLabels = {
+    small: 'Small',
+    medium: 'Medium',
+    large: 'Large',
+  }
+
+  $q.notify({
+    type: 'info',
+    message: `Video size: ${sizeLabels[size]}`,
+    icon: 'aspect_ratio',
+    timeout: 1000,
+  })
+}
+
 function seekBackward(seconds) {
   if (!player.value) return
 
@@ -357,12 +415,39 @@ defineExpose({
 <style scoped>
 .creator-video-player {
   width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  transition: max-width 0.3s ease;
+}
+
+/* Small size: 60% width */
+.creator-video-player.size-small {
+  max-width: 60%;
+}
+
+/* Medium size: 80% width (default) */
+.creator-video-player.size-medium {
+  max-width: 80%;
+}
+
+/* Large size: 100% width */
+.creator-video-player.size-large {
+  max-width: 100%;
 }
 
 #creator-youtube-player {
   width: 100%;
   height: 100%;
   aspect-ratio: 16 / 9;
+}
+
+/* On mobile, always use full width */
+@media (max-width: 599px) {
+  .creator-video-player.size-small,
+  .creator-video-player.size-medium,
+  .creator-video-player.size-large {
+    max-width: 100%;
+  }
 }
 
 /* Desktop: show full labels */
