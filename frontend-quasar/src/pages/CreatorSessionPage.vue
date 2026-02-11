@@ -179,17 +179,11 @@ watch(
 
 onMounted(() => {
   loadSession()
-
-  // Add spacebar listener for play/pause
-  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // Clear session when leaving
   sessionStore.clearSession()
-
-  // Remove spacebar listener
-  window.removeEventListener('keydown', handleKeyDown)
 })
 
 async function loadSession() {
@@ -237,8 +231,17 @@ async function refreshSession() {
 
 async function handleCreateMarker(startTime, endTime) {
   try {
-    await apiService.createMarker(route.params.id, sessionToken.value, startTime, endTime)
+    const newMarker = await apiService.createMarker(route.params.id, sessionToken.value, startTime, endTime)
     await refreshSession()
+
+    // Select the newly created marker
+    if (newMarker && newMarker.id) {
+      // Find the marker in the updated list
+      const marker = sessionStore.markers.find(m => m.id === newMarker.id)
+      if (marker) {
+        sessionStore.setSelectedMarker(marker)
+      }
+    }
   } catch (err) {
     throw new Error(err.response?.data?.error || 'Failed to create marker')
   }
@@ -332,7 +335,7 @@ function getYouTubeId(url) {
   for (const pattern of patterns) {
     const match = url.match(pattern)
     if (match && match[1]) {
-      console.log('Extracted video ID:', match[1], 'from URL:', url)
+      //console.log('Extracted video ID:', match[1], 'from URL:', url)
       return match[1]
     }
   }
@@ -353,23 +356,6 @@ function copyHelperLink() {
 
 function openHelperPage() {
   window.open(helperUrl.value, '_blank')
-}
-
-function handleKeyDown(event) {
-  // Spacebar for play/pause
-  if (event.code === 'Space' || event.key === ' ') {
-    // Don't override spacebar if user is typing in an input or textarea
-    const target = event.target
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      return
-    }
-
-    // Prevent default scrolling behavior and button triggers
-    event.preventDefault()
-    if (videoPlayerRef.value) {
-      videoPlayerRef.value.togglePlayPause()
-    }
-  }
 }
 
 function formatTime(seconds) {

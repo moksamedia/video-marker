@@ -1,0 +1,43 @@
+{
+  "name": "VideoMark Production",
+  "host": "moksamedia.com",
+  "protocol": "sftp",
+  "port": 17177,
+  "username": "moksamed",
+  "remotePath": "/home/moksamed/videomark.learntibetanlanguage.org",
+  "privateKeyPath": "~/.ssh/id_rsa",
+  "uploadOnSave": false,
+  "ignore": [
+    ".vscode",
+    ".git",
+    ".DS_Store",
+    "node_modules",
+    "frontend-quasar/node_modules",
+    "frontend-quasar/src",
+    "frontend-quasar/public",
+    "server",
+    "*.md",
+    "*.sh",
+    "database.sqlite"
+  ],
+  "watcher": {
+    "files": "dist/**/*",
+    "autoUpload": false,
+    "autoDelete": false
+  },
+  "context": "dist",
+  "profiles": {
+    "sftp": {
+      "protocol": "sftp",
+      "port": 17177,
+      "privateKeyPath": "~/.ssh/id_rsa"
+    },
+    "ftp": {
+      "protocol": "ftp",
+      "port": 21,
+      "secure": true,
+      "password": "YOUR_FTP_PASSWORD_HERE"
+    }
+  },
+  "defaultProfile": "sftp"
+}

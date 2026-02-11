@@ -46,29 +46,28 @@ onBeforeUnmount(() => {
 function loadYouTubeAPI() {
   if (window.YT && window.YT.Player) {
     initPlayer()
-    return
-  }
-
-  // If script is already being loaded, wait for it
-  if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    const firstScriptTag = document.getElementsByTagName('script')[0]
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-  }
-
-  // Add our callback to a queue to avoid overwriting
-  if (!window.onYouTubeIframeAPIReady) {
-    window.onYouTubeIframeAPIReady = () => {
-      if (window.ytCallbacks) {
-        window.ytCallbacks.forEach(cb => cb())
-        window.ytCallbacks = []
-      }
+  } else {
+    // If script is already being loaded, wait for it
+    if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
     }
-    window.ytCallbacks = []
+
+    // Add our callback to a queue to avoid overwriting
+    if (!window.onYouTubeIframeAPIReady) {
+      window.onYouTubeIframeAPIReady = () => {
+        if (window.ytCallbacks) {
+          window.ytCallbacks.forEach(cb => cb())
+          window.ytCallbacks = []
+        }
+      }
+      window.ytCallbacks = []
+    }
+    window.ytCallbacks = window.ytCallbacks || []
+    window.ytCallbacks.push(initPlayer)
   }
-  window.ytCallbacks = window.ytCallbacks || []
-  window.ytCallbacks.push(initPlayer)
 }
 
 function initPlayer() {
@@ -129,10 +128,18 @@ function onPlayerReady() {
     emit('durationUpdate', duration)
   }
 
+  // Restore saved playback position if available
+  const savedTime = getSavedTime()
+  if (savedTime > 0) {
+    player.value.seekTo(savedTime, true)
+  }
+
   pollInterval = setInterval(() => {
     if (player.value && player.value.getCurrentTime) {
       currentTime.value = player.value.getCurrentTime()
       emit('currentTimeUpdate', currentTime.value)
+      // Save current time periodically (every 250ms)
+      saveCurrentTime(currentTime.value)
     }
   }, 250)
 }
@@ -144,6 +151,30 @@ function onPlayerStateChange(event) {
     const duration = player.value.getDuration()
     player.value.seekTo(duration - 0.1, true)
     player.value.pauseVideo()
+  }
+}
+
+// Save/restore playback position
+function getStorageKey() {
+  return `video-position-${props.videoId}`
+}
+
+function saveCurrentTime(time) {
+  try {
+    localStorage.setItem(getStorageKey(), time.toString())
+  } catch (e) {
+    // Silently fail if localStorage is not available
+    console.warn('Failed to save video position:', e)
+  }
+}
+
+function getSavedTime() {
+  try {
+    const saved = localStorage.getItem(getStorageKey())
+    return saved ? parseFloat(saved) : 0
+  } catch (e) {
+    console.warn('Failed to retrieve video position:', e)
+    return 0
   }
 }
 

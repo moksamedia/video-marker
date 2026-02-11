@@ -98,16 +98,15 @@ onBeforeUnmount(() => {
 function loadYouTubeAPI() {
   if (window.YT && window.YT.Player) {
     initPlayer()
-    return
+  } else {
+    // Load YouTube IFrame API
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    const firstScriptTag = document.getElementsByTagName('script')[0]
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+
+    window.onYouTubeIframeAPIReady = initPlayer
   }
-
-  // Load YouTube IFrame API
-  const tag = document.createElement('script')
-  tag.src = 'https://www.youtube.com/iframe_api'
-  const firstScriptTag = document.getElementsByTagName('script')[0]
-  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-
-  window.onYouTubeIframeAPIReady = initPlayer
 }
 
 function initPlayer() {
@@ -148,6 +147,7 @@ function formatTime(seconds) {
 }
 
 function createPointMarker() {
+  console.log('VideoPlayer: Creating point marker at current time')
   if (!player.value) return
 
   const time = player.value.getCurrentTime()

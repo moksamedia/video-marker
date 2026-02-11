@@ -4,3 +4,5 @@ audio/*
 node_modules/
 frontend/dist/
 .DS_Store
+.vscode/sftp.json
+package-lock.json

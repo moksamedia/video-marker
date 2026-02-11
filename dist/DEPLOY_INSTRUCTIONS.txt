@@ -1,0 +1,59 @@
+==============================================
+Video Markup - Deployment Instructions
+==============================================
+
+Target Domain: videomark.learntibetanlanguage.org
+
+BEFORE UPLOADING:
+
+1. Edit server/config.php:
+   - Set BASE_URL to 'https://videomark.learntibetanlanguage.org/'
+   - Set ALLOWED_ORIGINS if needed
+
+2. Review .htaccess:
+   - Uncomment HTTPS redirect if using SSL (recommended)
+
+UPLOAD TO YOUR HOST:
+
+Upload ALL files from this directory to your web root (public_html):
+
+Required structure:
+  public_html/
+  ├── index.html
+  ├── .htaccess
+  ├── assets/
+  ├── icons/
+  ├── favicon.ico
+  └── server/
+      ├── api/
+      └── config.php
+
+SET PERMISSIONS:
+
+Directories: 755
+  - public_html/
+  - public_html/server/
+  - public_html/server/api/
+  - public_html/assets/
+
+Files: 644
+  - .htaccess
+  - index.html
+  - server/config.php
+  - server/api/index.php
+
+Auto-created (on first run):
+  - database.sqlite → 644 (or 666 if write issues)
+  - audio/ → 755 (or 777 if write issues)
+
+VERIFY DEPLOYMENT:
+
+1. Visit: https://videomark.learntibetanlanguage.org
+   Should see the home page
+
+2. Test API: https://videomark.learntibetanlanguage.org/api/sessions
+   Should return [] or JSON response
+
+3. Create a test session to verify everything works
+
+For detailed instructions, see PHP_DEPLOY.md in the project repository.

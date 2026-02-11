@@ -1,0 +1,12 @@
+{
+  "name": "video-markup",
+  "version": "1.0.0",
+  "description": "Video annotation app with deployment utilities",
+  "private": true,
+  "scripts": {
+    "test-ftp": "node test-ftp.js"
+  },
+  "dependencies": {
+    "basic-ftp": "^5.0.5"
+  }
+}

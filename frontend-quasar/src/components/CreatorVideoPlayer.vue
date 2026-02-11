@@ -5,10 +5,12 @@
     <div class="controls-container q-mt-md">
       <div class="row q-gutter-sm">
         <q-btn
+          ref="markBtn"
           color="primary"
           icon="place"
           class="mark-btn"
           @click="createPointMarker"
+          @keydown.prevent
           :disable="!player"
         >
           <span class="mobile-label">Mark</span>
@@ -77,7 +79,43 @@
             size="sm"
           />
         </q-btn-group>
+
+         <!-- Video Size Controls -->
+        <q-btn-group outline>
+          <q-btn
+            :outline="videoHeight !== 400"
+            :color="videoHeight === 400 ? 'primary' : 'grey-7'"
+            label="S"
+            @click="setVideoHeight(400)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Small (400px)</q-tooltip>
+          </q-btn>
+          <q-btn
+            :outline="videoHeight !== 600"
+            :color="videoHeight === 600 ? 'primary' : 'grey-7'"
+            label="M"
+            @click="setVideoHeight(600)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Medium (600px)</q-tooltip>
+          </q-btn>
+          <q-btn
+            :outline="videoHeight !== 800"
+            :color="videoHeight === 800 ? 'primary' : 'grey-7'"
+            label="L"
+            @click="setVideoHeight(800)"
+            :disable="!player"
+            size="sm"
+          >
+            <q-tooltip>Large (800px)</q-tooltip>
+          </q-btn>
+        </q-btn-group>
       </div>
+
+
 
       <div v-if="rangeStart" class="q-mt-sm">
         <q-banner class="bg-secondary text-white" dense rounded>
@@ -92,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 
 const props = defineProps({
@@ -107,14 +145,19 @@ const emit = defineEmits(['currentTimeUpdate', 'createMarker', 'durationUpdate']
 const $q = useQuasar()
 const playerEl = ref(null)
 const player = ref(null)
+const markBtn = ref(null)
 const currentTime = ref(0)
 const rangeStart = ref(null)
 const playbackSpeed = ref(1)
+const videoHeight = ref(600)
 
 let pollInterval = null
 
 onMounted(() => {
   loadYouTubeAPI()
+    // Add spacebar listener for play/pause
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
 })
 
 onBeforeUnmount(() => {
@@ -124,34 +167,65 @@ onBeforeUnmount(() => {
   if (player.value) {
     player.value.destroy()
   }
+    // Remove spacebar listener
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
 })
+
+function handleKeyDown(event) {
+  // Spacebar for play/pause
+  //console.log('Keydown event:', event)
+
+  if (event.keyCode == 32 || event.code === 'Space' || event.key === ' ') {
+
+    console.log('Space keydown event:', event)
+
+
+    // Prevent default scrolling behavior and button triggers
+    event.preventDefault()
+    togglePlayPause()
+  }
+}
+
+function handleKeyUp(event) {
+    // Spacebar for play/pause
+  //console.log('Keyup event:', event)
+
+  if (event.code === 'Space' || event.key === ' ') {
+
+    console.log('Space keyup event:', event)
+
+
+    // Prevent default scrolling behavior and button triggers
+    event.preventDefault()
+  }
+}
 
 function loadYouTubeAPI() {
   if (window.YT && window.YT.Player) {
     initPlayer()
-    return
-  }
-
-  // If script is already being loaded, wait for it
-  if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    const firstScriptTag = document.getElementsByTagName('script')[0]
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-  }
-
-  // Add our callback to a queue to avoid overwriting
-  if (!window.onYouTubeIframeAPIReady) {
-    window.onYouTubeIframeAPIReady = () => {
-      if (window.ytCallbacks) {
-        window.ytCallbacks.forEach(cb => cb())
-        window.ytCallbacks = []
-      }
+  } else {
+    // If script is already being loaded, wait for it
+    if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
     }
-    window.ytCallbacks = []
+
+    // Add our callback to a queue to avoid overwriting
+    if (!window.onYouTubeIframeAPIReady) {
+      window.onYouTubeIframeAPIReady = () => {
+        if (window.ytCallbacks) {
+          window.ytCallbacks.forEach(cb => cb())
+          window.ytCallbacks = []
+        }
+      }
+      window.ytCallbacks = []
+    }
+    window.ytCallbacks = window.ytCallbacks || []
+    window.ytCallbacks.push(initPlayer)
   }
-  window.ytCallbacks = window.ytCallbacks || []
-  window.ytCallbacks.push(initPlayer)
 }
 function initPlayer() {
   console.log('Initializing YouTube player with video ID:', props.videoId)
@@ -169,7 +243,7 @@ function initPlayer() {
   player.value = new window.YT.Player('creator-youtube-player', {
     videoId: props.videoId,
     width: '100%',
-    height: '400',
+    height: videoHeight.value,
     playerVars: {
       modestbranding: 1,
       rel: 0,
@@ -218,10 +292,18 @@ function onPlayerReady() {
     emit('durationUpdate', duration)
   }
 
+  // Restore saved playback position if available
+  const savedTime = getSavedTime()
+  if (savedTime > 0) {
+    player.value.seekTo(savedTime, true)
+  }
+
   pollInterval = setInterval(() => {
     if (player.value && player.value.getCurrentTime) {
       currentTime.value = player.value.getCurrentTime()
       emit('currentTimeUpdate', currentTime.value)
+      // Save current time periodically (every 250ms)
+      saveCurrentTime(currentTime.value)
     }
   }, 250)
 }
@@ -242,7 +324,37 @@ function formatTime(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// Save/restore playback position
+function getStorageKey() {
+  return `video-position-${props.videoId}`
+}
+
+function saveCurrentTime(time) {
+  try {
+    localStorage.setItem(getStorageKey(), time.toString())
+  } catch (e) {
+    // Silently fail if localStorage is not available
+    console.warn('Failed to save video position:', e)
+  }
+}
+
+function getSavedTime() {
+  try {
+    const saved = localStorage.getItem(getStorageKey())
+    return saved ? parseFloat(saved) : 0
+  } catch (e) {
+    console.warn('Failed to retrieve video position:', e)
+    return 0
+  }
+}
+
 function createPointMarker() {
+  console.log('CreatorVideoPlayer: Creating point marker at current time')
+  // Blur the button to prevent spacebar from triggering it again
+  nextTick(() => {
+    markBtn.value.$el.blur()
+  });
+
   if (!player.value) return
 
   const time = player.value.getCurrentTime()
@@ -296,6 +408,21 @@ function setPlaybackSpeed(speed) {
     type: 'info',
     message: `Playback speed set to ${speed}x`,
     icon: 'speed',
+    timeout: 1000,
+  })
+}
+
+function setVideoHeight(height) {
+  if (!player.value) return
+
+  videoHeight.value = height
+  player.value.setSize('100%', height)
+
+  const sizeLabel = height === 400 ? 'Small' : height === 600 ? 'Medium' : 'Large'
+  $q.notify({
+    type: 'info',
+    message: `Video size set to ${sizeLabel}`,
+    icon: 'aspect_ratio',
     timeout: 1000,
   })
 }
