@@ -173,13 +173,17 @@ onBeforeUnmount(() => {
 })
 
 function handleKeyDown(event) {
-  // Spacebar for play/pause
-  //console.log('Keydown event:', event)
-
-  if (event.keyCode == 32 || event.code === 'Space' || event.key === ' ') {
-
-    console.log('Space keydown event:', event)
-
+  // Spacebar for play/pause - but not when typing in text fields
+  if (event.code === 'Space' || event.key === ' ') {
+    // Check if user is typing in a text field
+    const target = event.target
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return // Allow normal spacebar behavior in text fields
+    }
 
     // Prevent default scrolling behavior and button triggers
     event.preventDefault()
@@ -188,13 +192,17 @@ function handleKeyDown(event) {
 }
 
 function handleKeyUp(event) {
-    // Spacebar for play/pause
-  //console.log('Keyup event:', event)
-
+  // Prevent spacebar from triggering focused buttons
   if (event.code === 'Space' || event.key === ' ') {
-
-    console.log('Space keyup event:', event)
-
+    // Check if user is typing in a text field
+    const target = event.target
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return // Allow normal spacebar behavior in text fields
+    }
 
     // Prevent default scrolling behavior and button triggers
     event.preventDefault()

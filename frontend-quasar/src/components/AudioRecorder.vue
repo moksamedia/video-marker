@@ -67,6 +67,9 @@
           <q-icon name="mic_off" />
         </template>
         Microphone permission required for audio recording
+        <template v-slot:action>
+          <q-btn flat color="white" label="Grant Permission" @click="requestPermission" />
+        </template>
       </q-banner>
     </div>
   </div>
@@ -103,14 +106,33 @@ let audioContext = null
 let analyser = null
 let microphone = null
 let animationId = null
+let activeStream = null // Keep stream active to avoid delay on recording
 const MAX_DURATION = 300 // 5 minutes in seconds
 
 onMounted(async () => {
+  await requestPermission()
+})
+
+async function requestPermission() {
   try {
-    await navigator.mediaDevices.getUserMedia({ audio: true })
+    console.log('Requesting microphone permission...')
+    const startTime = performance.now()
+
+    activeStream = await navigator.mediaDevices.getUserMedia({ audio: true })
     hasPermission.value = true
 
-    // Auto-start recording if prop is set
+    const elapsedTime = performance.now() - startTime
+    console.log(`Microphone permission granted in ${elapsedTime.toFixed(0)}ms`)
+
+    // Log which microphone is being used
+    const audioTrack = activeStream.getAudioTracks()[0]
+    if (audioTrack) {
+      console.log('  Device label:', audioTrack.label || 'Unknown device')
+      console.log('  Device ID:', audioTrack.getSettings().deviceId || 'Unknown')
+      console.log('  Settings:', audioTrack.getSettings())
+    }
+
+    // Auto-start recording if prop is set (stream is already active)
     if (props.autoStart) {
       startRecording()
     }
@@ -118,11 +140,12 @@ onMounted(async () => {
     hasPermission.value = false
     $q.notify({
       type: 'warning',
-      message: 'Microphone permission denied',
+      message: 'Microphone permission denied. Please allow microphone access in your browser settings.',
       icon: 'mic_off',
+      timeout: 3000,
     })
   }
-})
+}
 
 onBeforeUnmount(() => {
   if (durationInterval) {
@@ -132,11 +155,27 @@ onBeforeUnmount(() => {
     mediaRecorder.stop()
   }
   stopAudioLevelMonitoring()
+
+  // Clean up active stream
+  if (activeStream) {
+    activeStream.getTracks().forEach((track) => track.stop())
+    activeStream = null
+  }
 })
 
 async function startRecording() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    console.log('Starting recording...')
+    const startTime = performance.now()
+
+    // Use existing stream if available, otherwise request new one
+    let stream = activeStream
+    if (!stream) {
+      console.log('No active stream, requesting new one...')
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      activeStream = stream
+    }
+
     mediaRecorder = new MediaRecorder(stream)
     audioChunks = []
     recordingDuration.value = 0
@@ -149,12 +188,15 @@ async function startRecording() {
     mediaRecorder.onstop = async () => {
       const webmBlob = new Blob(audioChunks, { type: 'audio/webm' })
       await encodeToMP3(webmBlob)
-      stream.getTracks().forEach((track) => track.stop())
+      // Don't stop the stream - keep it active for next recording
       stopAudioLevelMonitoring()
     }
 
     mediaRecorder.start()
     isRecording.value = true
+
+    const elapsedTime = performance.now() - startTime
+    console.log(`Recording started in ${elapsedTime.toFixed(0)}ms`)
 
     // Start audio level monitoring
     startAudioLevelMonitoring(stream)
@@ -184,6 +226,7 @@ async function startRecording() {
 
 function startAudioLevelMonitoring(stream) {
   try {
+    console.log('Starting audio level monitoring...')
     // Create audio context and analyser
     audioContext = new (window.AudioContext || window.webkitAudioContext)()
     analyser = audioContext.createAnalyser()
@@ -210,6 +253,7 @@ function startAudioLevelMonitoring(stream) {
     }
 
     updateLevel()
+    console.log('Finished starting audio level monitoring...')
   } catch (error) {
     console.error('Failed to start audio level monitoring:', error)
   }

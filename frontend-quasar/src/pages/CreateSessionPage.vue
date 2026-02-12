@@ -37,7 +37,7 @@
           </div>
         </q-card-section>
 
-        <q-card-section>
+        <q-card-section v-if="!sessionData">
           <q-form @submit="createSession">
             <q-input
               v-model="sessionName"

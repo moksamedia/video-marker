@@ -804,8 +804,7 @@ async function saveEdit(post) {
 <style>
 /* Tibetan text - even larger font */
 .post-text-content .tibetan-text {
-  font-size: 2.2rem;
-  line-height: 1.6;
+  font-size: 1.6rem;
 }
 
 /* Mobile: smaller Tibetan text */
